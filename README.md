@@ -1,57 +1,65 @@
-# Canvases
+# `canvas`
 
-Canvases is an infinite canvas workspace for organizing, prototyping, and storing HTML/CSS snippets. It acts as a visual scratchpad where developers can arrange code snippets, add sticky notes, and experiment with designs in a spatial interface.
+An infinite canvas of live websites. Lay out sites and snippets in labeled groups, then zoom, pan and rearrange them like cards on a table.
+
+
+<div align="center">
+  
+[<kbd><br>haaans.com/canvas<br><br></kbd>](https://haaans.com/canvas/?import=canvases/haaans-sites.json)
+
+</div>
+
+
+<p align="center">
+<img src="demos/hero.png" alt="app" width="500">
+</p>
 
 ## Features
 
-- **Infinite Workspace:** Pan and zoom freely around a boundless canvas to organize your thoughts and code.
-- **HTML/CSS Snippets:**
-    - Create live-rendering HTML snippets.
-    - **Dynamic CSS Variables:** Automatically detects CSS variables in your snippets and provides UI controls (color pickers, scrubbable numbers) to tweak them in real-time.
-    - **Code Editing:** View and copy the full source code using the embedded Monaco Editor.
-    - **Fullscreen Preview:** Double-click any snippet to view it in isolation.
-- **Organization:**
-    - **Labels:** Add resizeable, colored sticky labels to group and annotate your work.
-    - **Multi-Canvas Support:** Create and manage multiple separate canvases (saved locally).
-- **Productivity Tools:**
-    - **JSON Export/Import:** Copy your entire canvas state to the clipboard for backup or sharing.
-    - **History:** robust Undo/Redo (Ctrl+Z / Ctrl+Shift+Z) support.
-    - **Dark Mode:** Toggle between light and dark themes.
-
-## How it Works
-
-The application is built primarily as a single-file client-side web app (`index.html`).
-
-- **Frontend:** Vanilla JavaScript, HTML, and Tailwind CSS (loaded via CDN).
-- **Editor:** Integrates the [Monaco Editor](https://microsoft.github.io/monaco-editor/) for high-quality code viewing.
-- **Persistence:** Data is currently saved to your browser's `localStorage`, allowing you to return to your work later.
-- **Cloudflare Worker (Optional):** The repository includes `pantry-worker.js`, a Cloudflare Worker script designed to proxy requests to [Pantry Cloud](https://getpantry.cloud/). This suggests an architecture for potential remote data persistence or sharing capabilities.
-
-## Getting Started
-
-1.  **Clone the repository:**
-    ```bash
-    git clone <repository-url>
-    ```
-2.  **Run the app:**
-    Simply open `index.html` in your modern web browser. No build step or server is required for the core local functionality.
-
-    *Note: For the best experience, use a local development server (like Live Server in VS Code or `python3 -m http.server`) to avoid any potential CORS issues with local file access, although the app is designed to work standalone.*
-
-## Controls
-
--   **Pan:** Hold `Space` + drag, middle-mouse drag, or two-finger scroll on a trackpad.
--   **Zoom:** Pinch, `Cmd/Ctrl` + scroll, mouse wheel, or the on-screen zoom controls. `Shift + 1` zooms to fit.
--   **Select:** Click a node, `Shift` + click to add, or drag on empty canvas to marquee-select. `Cmd/Ctrl + A` selects all.
--   **Move:** Drag any selected node to move the whole selection. Dragging a label's title moves everything inside it. Arrow keys nudge.
--   **Rename:** Double-click a label or snippet title.
--   **Open site:** `Cmd/Ctrl` + click a snippet (or use its open button).
--   **Delete:** `Delete` / `Backspace` removes the selection.
--   **Resize:** Drag the bottom-right corner of any node.
--   **Undo:** `Ctrl + Z`
--   **Redo:** `Ctrl + Shift + Z` / `Ctrl + Y`
--   **Reset Zoom:** `Ctrl + 0`
-
-## Importing a canvas file
-
-Open `index.html?import=canvases/haaans-sites.json` to load a canvas file from this site (same-origin only). Press save to keep it.
+<table>
+<tr valign="top">
+<td width="50%">
+<h3>Zoom from the map into a site</h3>
+<p>Pinch or hold Cmd/Ctrl and scroll to dive from the whole board into one live site, centered on wherever your cursor is.</p>
+</td>
+<td width="50%">
+<img src="demos/zoom.gif" alt="Zoom from the map into a site">
+</td>
+</tr>
+<tr valign="top">
+<td width="50%">
+<img src="demos/pan.gif" alt="Hold space to pan">
+</td>
+<td width="50%">
+<h3>Hold space to pan</h3>
+<p>Hold the space bar and drag to slide around the board, or scroll with two fingers on a trackpad.</p>
+</td>
+</tr>
+<tr valign="top">
+<td width="50%">
+<h3>Drag a label, bring its sites</h3>
+<p>Labels group what's inside them. Grab a label's title and everything in it moves along.</p>
+</td>
+<td width="50%">
+<img src="demos/label.gif" alt="Drag a label, bring its sites">
+</td>
+</tr>
+<tr valign="top">
+<td width="50%">
+<img src="demos/fullscreen.gif" alt="Double-click to open full screen">
+</td>
+<td width="50%">
+<h3>Double-click to open full screen</h3>
+<p>Open any site at full size with its source alongside it. Press Esc and you're back where you were on the board.</p>
+</td>
+</tr>
+<tr valign="top">
+<td width="50%">
+<h3>Resize and watch it reflow</h3>
+<p>Every card is a real, live page. Drag a corner to make it narrower and the site's responsive layout kicks in.</p>
+</td>
+<td width="50%">
+<img src="demos/resize.gif" alt="Resize and watch it reflow">
+</td>
+</tr>
+</table>
