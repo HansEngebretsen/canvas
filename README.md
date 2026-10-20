@@ -40,11 +40,18 @@ The application is built primarily as a single-file client-side web app (`index.
 
 ## Controls
 
--   **Pan:** Hold `Space` + Drag or Click & Drag on the background.
--   **Zoom:** Mouse Wheel or use the on-screen zoom controls.
--   **Select:** Click a node to select it.
--   **Move:** Drag the header of any node.
+-   **Pan:** Hold `Space` + drag, middle-mouse drag, or two-finger scroll on a trackpad.
+-   **Zoom:** Pinch, `Cmd/Ctrl` + scroll, mouse wheel, or the on-screen zoom controls. `Shift + 1` zooms to fit.
+-   **Select:** Click a node, `Shift` + click to add, or drag on empty canvas to marquee-select. `Cmd/Ctrl + A` selects all.
+-   **Move:** Drag any selected node to move the whole selection. Dragging a label's title moves everything inside it. Arrow keys nudge.
+-   **Rename:** Double-click a label or snippet title.
+-   **Open site:** `Cmd/Ctrl` + click a snippet (or use its open button).
+-   **Delete:** `Delete` / `Backspace` removes the selection.
 -   **Resize:** Drag the bottom-right corner of any node.
 -   **Undo:** `Ctrl + Z`
 -   **Redo:** `Ctrl + Shift + Z` / `Ctrl + Y`
 -   **Reset Zoom:** `Ctrl + 0`
+
+## Importing a canvas file
+
+Open `index.html?import=canvases/haaans-sites.json` to load a canvas file from this site (same-origin only). Press save to keep it.

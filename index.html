@@ -60,7 +60,7 @@ a);requestAnimationFrame(function(){g(document.body)})})}var l=["material-icons"
         theme: {
             extend: {
                 colors: {
-                    canvas: { light: '#f4fbfd', dark: '#0c1214' }, // Subtle cyan tinge
+                    canvas: { light: '#f5f5f5', dark: '#1e1e1e' }, // Neutral, Figma-like
                 }
             }
         }
@@ -74,26 +74,43 @@ a);requestAnimationFrame(function(){g(document.body)})})}var l=["material-icons"
     ::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 3px; }
     .dark ::-webkit-scrollbar-thumb { background: #52525b; }
 
-    /* Canvas Background */
+    /* Canvas Background — dots are drawn on a screen-space <canvas> (see renderGrid) */
     .dot-bg {
-        background-image: radial-gradient(#cbd5e1 1px, transparent 1px);
-        background-size: 24px 24px;
         width: 100%;
         height: 100%;
         position: fixed;
     }
-    .dark .dot-bg {
-        background-image: radial-gradient(#27272a 1px, transparent 1px);
-    }
-    
-    /* Hide Dots */
-    body.hide-dots .dot-bg {
-        background-image: none !important;
+    #grid-canvas {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
     }
 
+    body.bg-canvas-light { background-color: #f5f5f5; }
+    .dark body.bg-canvas-light { background-color: #1e1e1e; }
+
+    /* Hide Dots */
+    body.hide-dots #grid-canvas { display: none; }
+
     /* Interaction */
-    #canvas-container { touch-action: none; cursor: grab; }
-    #canvas-container.grabbing { cursor: grabbing; }
+    #canvas-container { touch-action: none; cursor: default; }
+    #canvas-container.space-pan,
+    #canvas-container.space-pan * { cursor: grab !important; }
+    #canvas-container.grabbing,
+    #canvas-container.grabbing * { cursor: grabbing !important; }
+
+    /* Marquee selection */
+    #marquee {
+        position: absolute;
+        display: none;
+        border: 1px solid #3b82f6;
+        background: rgba(59, 130, 246, 0.08);
+        pointer-events: none;
+        z-index: 90;
+        border-radius: 2px;
+    }
 
     /* Node Architecture */
     .canvas-node {
@@ -107,92 +124,129 @@ a);requestAnimationFrame(function(){g(document.body)})})}var l=["material-icons"
     /* Z-Index Layering */
     .canvas-node.type-label { z-index: 5; }
     .canvas-node.type-snippet { z-index: 20; }
-    .canvas-node.selected { z-index: 50; } 
+    .canvas-node.type-snippet.selected { z-index: 50; }
+    .canvas-node.type-label.selected {
+        outline: calc(var(--px, 1px) * 2) solid #3b82f6;
+        outline-offset: calc(var(--px, 1px) * 3);
+    }
 
-    /* --- Snippet Styling --- */
+    /* Zoomed far out: card titles/actions would just be noise */
+    body.zoom-far .node-header { opacity: 0; pointer-events: none; }
+    body.zoom-tiny .node-actions { display: none; }
+
+    /*
+     * Figma-style chrome: titles and buttons live in world space but are sized in
+     * screen pixels (multiples of --px / --ui), so they read the same at every zoom.
+     */
     .node-header {
         position: absolute;
         bottom: 100%;
         left: 0;
         width: 100%;
-        padding-bottom: 10px;
+        padding-bottom: calc(var(--px, 1px) * 6);
         display: flex;
-        justify-content: space-between;
         align-items: flex-end;
         pointer-events: none;
         z-index: 30;
     }
     .node-header > * { pointer-events: auto; }
 
-    /* Frame Titles */
     .node-title {
-        font-family: monospace;
-        font-weight: 800;
-        font-size: 1.5rem; 
-        padding: 4px 0;
-        cursor: move;
-        color: var(--title-color, #64748b);
-        transition: color 0.2s;
-        text-shadow: 0 0 20px rgba(255,255,255,1);
+        font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+        font-weight: 500;
+        font-size: calc(var(--px, 1px) * 12);
+        line-height: 1.2;
+        padding: 0;
+        cursor: default;
+        color: color-mix(in srgb, var(--title-color, #6b7280) 35%, #6b7280);
         white-space: nowrap;
-        letter-spacing: -0.03em;
-        line-height: 1;
+        flex: 1;
+        min-width: 0;
     }
-    .dark .node-title { text-shadow: 0 0 20px rgba(0,0,0,1); }
+    .dark .node-title { color: color-mix(in srgb, var(--title-color, #a1a1aa) 35%, #a1a1aa); }
+    .node-title:not([readonly]) { cursor: text; color: inherit; }
 
     .node-actions {
+        position: absolute;
+        right: 0;
+        bottom: calc(var(--px, 1px) * 6);
         display: flex;
-        gap: 8px;
-        margin-left: auto;
+        gap: 4px;
         opacity: 0;
-        transition: opacity 0.2s;
+        transition: opacity 0.15s;
+        transform: scale(var(--ui, 1));
+        transform-origin: bottom right;
     }
-    .canvas-node:hover .node-actions {
-        opacity: 1;
-    }
+    .canvas-node:hover .node-actions { opacity: 1; }
 
-    /* Action Buttons */
+    /* Action Buttons (sized in screen px, scaled by --ui) */
     .action-btn {
         background: white;
-        border: 1px solid #e2e8f0;
-        padding: 10px; 
-        border-radius: 10px;
-        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+        border: 1px solid rgba(0,0,0,0.08);
+        padding: 4px;
+        border-radius: 6px;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.06);
         display: flex;
         align-items: center;
         justify-content: center;
-        transition: all 0.2s;
-        color: #475569;
+        transition: background 0.15s, color 0.15s;
+        color: #52525b;
     }
     .dark .action-btn {
-        background: #18181b;
-        border-color: #27272a;
-        color: #94a3b8;
+        background: #27272a;
+        border-color: rgba(255,255,255,0.08);
+        color: #a1a1aa;
     }
-    .action-btn:hover { background: #f1f5f9; color: #0f172a; transform: translateY(-2px); }
-    .dark .action-btn:hover { background: #27272a; color: #f8fafc; }
-    .action-btn.delete:hover { background: #fee2e2; color: #ef4444; border-color: #fecaca; }
-    .dark .action-btn.delete:hover { background: #450a0a; color: #f87171; border-color: #7f1d1d; }
-    
-    .action-btn .material-symbols-outlined { font-size: 24px; }
+    .action-btn:hover { background: #f4f4f5; color: #18181b; }
+    .dark .action-btn:hover { background: #3f3f46; color: #fafafa; }
+    .action-btn.delete:hover { background: #fef2f2; color: #dc2626; }
+    .dark .action-btn.delete:hover { background: #450a0a; color: #f87171; }
+
+    .action-btn .material-symbols-outlined { font-size: 16px; }
 
     /* Preview Wrapper */
     .node-preview-wrapper {
         position: relative;
         background: white;
-        border-radius: 1rem;
-        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        border-radius: 12px;
+        box-shadow: 0 0 0 var(--px, 1px) rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.05);
         overflow: hidden;
-        border: 1px solid #e2e8f0;
-        transition: box-shadow 0.2s;
-        flex-shrink: 0; 
+        transition: box-shadow 0.15s;
+        flex-shrink: 0;
         z-index: 10;
         width: 100%; height: 100%;
     }
-    .dark .node-preview-wrapper { background: #18181b; border-color: #27272a; }
-    .canvas-node.selected .node-preview-wrapper {
-        box-shadow: 0 0 0 4px #3b82f6, 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    .dark .node-preview-wrapper {
+        background: #18181b;
+        box-shadow: 0 0 0 var(--px, 1px) rgba(255,255,255,0.08), 0 2px 8px rgba(0,0,0,0.3);
     }
+    .canvas-node.type-snippet:hover .node-preview-wrapper {
+        box-shadow: 0 0 0 var(--px, 1px) rgba(0,0,0,0.14), 0 4px 16px rgba(0,0,0,0.08);
+    }
+    .canvas-node.selected .node-preview-wrapper,
+    .dark .canvas-node.selected .node-preview-wrapper {
+        box-shadow: 0 0 0 calc(var(--px, 1px) * 2) #3b82f6, 0 4px 16px rgba(0,0,0,0.08);
+    }
+
+    /* Cmd/Ctrl + click opens the site */
+    body.cmd-down .snippet-overlay { cursor: alias; }
+    .open-hint {
+        position: absolute;
+        top: 50%; left: 50%;
+        transform: translate(-50%, -50%) scale(var(--ui, 1));
+        display: flex; align-items: center; gap: 6px;
+        padding: 6px 12px;
+        border-radius: 999px;
+        background: rgba(24, 24, 27, 0.85);
+        color: white;
+        font: 500 13px/1 ui-sans-serif, system-ui, sans-serif;
+        white-space: nowrap;
+        opacity: 0;
+        transition: opacity 0.15s;
+        pointer-events: none;
+    }
+    .open-hint .material-symbols-outlined { font-size: 16px; }
+    body.cmd-down .snippet-overlay:hover .open-hint { opacity: 1; }
 
     /* --- Variables (Collapsible Settings) --- */
     .node-vars {
@@ -249,57 +303,95 @@ a);requestAnimationFrame(function(){g(document.body)})})}var l=["material-icons"
     }
 
     /* --- Label Styling --- */
+    /* Fill/border/title all come from --label-color at low strength so any color stays quiet */
     .type-label {
-        border-radius: 2rem;
-        backdrop-filter: blur(30px) saturate(180%);
-        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+        --label-color: #7c8798;
+        border-radius: 24px;
+        border: var(--px, 1px) solid color-mix(in srgb, var(--label-color) 30%, transparent);
+        background-color: color-mix(in srgb, var(--label-color) 6%, transparent);
     }
-    
+    .dark .type-label {
+        border-color: color-mix(in srgb, var(--label-color) 30%, transparent);
+        background-color: color-mix(in srgb, var(--label-color) 8%, transparent);
+    }
+
+    /* Title sits just above the label, like a Figma frame name — dragging it moves the group */
     .label-header {
-        padding: 24px 32px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
+        position: absolute;
+        bottom: 100%;
+        left: 0;
         width: 100%;
-        box-sizing: border-box;
+        padding: 0 0 calc(var(--px, 1px) * 8) calc(var(--px, 1px) * 2);
+        display: flex;
+        align-items: flex-end;
+        cursor: default;
     }
 
     .label-title {
-        font-family: sans-serif;
-        font-weight: 900;
-        font-size: 3.5rem; 
+        font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+        font-weight: 500;
+        font-size: calc(var(--px, 1px) * 14);
         background: transparent;
         border: none;
         outline: none;
-        width: 100%;
-        cursor: text;
-        line-height: 1;
-        letter-spacing: -0.02em;
+        flex: 0 1 auto;
+        width: auto;
+        min-width: 0;
+        text-overflow: ellipsis;
+        cursor: default;
+        line-height: 1.2;
+        color: color-mix(in srgb, var(--label-color) 75%, #27272a);
     }
+    .dark .label-title { color: color-mix(in srgb, var(--label-color) 70%, #ffffff); }
+    .label-title:not([readonly]) { cursor: text; }
 
-    .label-controls { display: flex; gap: 16px; align-items: center; }
+    /* Controls follow the title (not the far edge) so they're on screen even on wide labels */
+    .label-controls {
+        flex: none;
+        margin-left: calc(var(--px, 1px) * 8);
+        margin-bottom: calc(var(--px, 1px) * -2);
+        display: flex; gap: 6px; align-items: center;
+        opacity: 0;
+        transition: opacity 0.15s;
+        transform: scale(var(--ui, 1));
+        transform-origin: bottom left;
+    }
+    .type-label:hover > .label-header .label-controls { opacity: 1; }
+
+    .label-palette {
+        display: flex; gap: 5px; align-items: center;
+        padding: 4px 6px;
+        border-radius: 999px;
+        background: white;
+        border: 1px solid rgba(0,0,0,0.08);
+        box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+    }
+    .dark .label-palette { background: #27272a; border-color: rgba(255,255,255,0.08); }
+    .palette-dot {
+        width: 14px; height: 14px;
+        border-radius: 50%;
+        cursor: pointer;
+        box-shadow: inset 0 0 0 1px rgba(0,0,0,0.08);
+        transition: transform 0.15s;
+    }
+    .palette-dot:hover { transform: scale(1.2); }
+    .palette-dot.active { box-shadow: 0 0 0 1.5px white, 0 0 0 3px currentColor; }
+    .dark .palette-dot.active { box-shadow: 0 0 0 1.5px #27272a, 0 0 0 3px currentColor; }
 
     .color-swatch-wrapper {
         position: relative;
-        width: 48px; height: 48px; 
-        opacity: 0; 
-        transition: opacity 0.2s;
-    }
-    .type-label:hover .color-swatch-wrapper { opacity: 1; }
-
-    .color-swatch {
-        width: 100%; height: 100%;
+        width: 14px; height: 14px;
         border-radius: 50%;
-        border: 4px solid white;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-        cursor: pointer;
-        padding: 0;
-        -webkit-appearance: none;
+        overflow: hidden;
+        background: conic-gradient(#f87171, #fbbf24, #4ade80, #60a5fa, #a78bfa, #f472b6, #f87171);
     }
-    .color-swatch::-webkit-color-swatch-wrapper { padding: 0; }
-    .color-swatch::-webkit-color-swatch { border: none; border-radius: 50%; }
-
-    .label-del .material-symbols-outlined { font-size: 28px; }
+    .color-swatch {
+        position: absolute; inset: 0;
+        width: 100%; height: 100%;
+        opacity: 0;
+        cursor: pointer;
+        padding: 0; border: 0;
+    }
 
     /* Scrubbing Input */
     .scrub-input {
@@ -312,10 +404,11 @@ a);requestAnimationFrame(function(){g(document.body)})})}var l=["material-icons"
     /* Resizer */
     .node-resizer {
         position: absolute;
-        bottom: 0; right: 0; width: 40px; height: 40px;
+        bottom: 0; right: 0;
+        width: calc(var(--px, 1px) * 14); height: calc(var(--px, 1px) * 14);
         cursor: nwse-resize; z-index: 60;
-        background: linear-gradient(135deg, transparent 50%, #94a3b8 50%);
-        border-bottom-right-radius: 1rem;
+        background: linear-gradient(135deg, transparent 50%, #a1a1aa 50%);
+        border-bottom-right-radius: 12px;
         opacity: 0; transition: opacity 0.2s;
         pointer-events: auto;
     }
@@ -328,9 +421,8 @@ a);requestAnimationFrame(function(){g(document.body)})})}var l=["material-icons"
 <!-- Main Control Bar -->
 <div class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] flex items-center gap-2 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md p-1.5 rounded-2xl shadow-2xl border border-slate-200 dark:border-zinc-800 scale-90 origin-bottom">
 <!-- Logo & Menu -->
-<div class="relative pl-2 pr-2 group">
+<div class="relative pl-3 pr-1 group">
     <div class="flex items-center gap-2 cursor-pointer" id="canvas-menu-trigger">
-        <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" class="fill-current text-[#AAC1F0] dark:text-cyan-900/60"><path d="M240-160q-33 0-56.5-23.5T160-240q0-33 23.5-56.5T240-320q33 0 56.5 23.5T320-240q0 33-23.5 56.5T240-160Zm0-240q-33 0-56.5-23.5T160-480q0-33 23.5-56.5T240-560q33 0 56.5 23.5T320-480q0 33-23.5 56.5T240-400Zm0-240q-33 0-56.5-23.5T160-720q0-33 23.5-56.5T240-800q33 0 56.5 23.5T320-720q0 33-23.5 56.5T240-640Zm240 0q-33 0-56.5-23.5T400-720q0-33 23.5-56.5T480-800q33 0 56.5 23.5T560-720q0 33-23.5 56.5T480-640Zm240 0q-33 0-56.5-23.5T640-720q0-33 23.5-56.5T720-800q33 0 56.5 23.5T800-720q0 33-23.5 56.5T720-640ZM480-400q-33 0-56.5-23.5T400-480q0-33 23.5-56.5T480-560q33 0 56.5 23.5T560-480q0 33-23.5 56.5T480-400Zm40 240v-123l221-220q9-9 20-13t22-4q12 0 23 4.5t20 13.5l37 37q8 9 12.5 20t4.5 22q0 11-4 22.5T863-380L643-160H520Zm300-263-37-37 37 37ZM580-220h38l121-122-18-19-19-18-122 121v38Zm141-141-19-18 37 37-18-19Z"/></svg>
         <div class="flex items-center gap-0.5">
             <input id="canvas-title" class="font-bold text-sm bg-transparent border-none outline-none w-20 truncate cursor-text text-slate-700 dark:text-slate-200" value="Canvases" readonly spellcheck="false">
             <span class="material-symbols-outlined text-slate-400 text-[20px] opacity-0 transition-opacity" id="canvas-chevron">expand_less</span>
@@ -393,11 +485,14 @@ a);requestAnimationFrame(function(){g(document.body)})})}var l=["material-icons"
 <button class="w-8 h-8 rounded-full hover:bg-slate-200/50 dark:hover:bg-zinc-800/50 transition-colors flex items-center justify-center text-slate-500 dark:text-slate-400" id="btn-zoom-out"><span class="material-symbols-outlined text-[20px]">remove</span></button>
 <button class="text-xs font-mono font-bold text-slate-400 dark:text-slate-500 w-10 text-center select-none" id="btn-zoom-reset">60%</button>
 <button class="w-8 h-8 rounded-full hover:bg-slate-200/50 dark:hover:bg-zinc-800/50 transition-colors flex items-center justify-center text-slate-500 dark:text-slate-400" id="btn-zoom-in"><span class="material-symbols-outlined text-[20px]">add</span></button>
+<button class="w-8 h-8 rounded-full hover:bg-slate-200/50 dark:hover:bg-zinc-800/50 transition-colors flex items-center justify-center text-slate-500 dark:text-slate-400" id="btn-zoom-fit" title="Zoom to fit (Shift+1)"><span class="material-symbols-outlined text-[20px]">fit_screen</span></button>
 </div>
 <!-- Toast -->
-<div class="fixed bottom-32 left-1/2 -translate-x-1/2 z-[60] bg-slate-800 text-white px-6 py-4 rounded-full shadow-2xl text-lg font-medium opacity-0 pointer-events-none transition-all duration-300 transform translate-y-4" id="toast">Notification</div>
+<div class="fixed bottom-24 left-1/2 -translate-x-1/2 z-[60] bg-slate-800 text-white px-5 py-3 rounded-full shadow-2xl text-sm font-medium whitespace-nowrap opacity-0 pointer-events-none transition-all duration-300 transform translate-y-4" id="toast">Notification</div>
 <!-- Canvas -->
-<div class="w-full h-full relative overflow-hidden dot-bg grabbing outline-none" id="canvas-container" style="background-position: 773.222px 610.222px; background-size: 14.4px 14.4px;" tabindex="-1">
+<div class="w-full h-full relative overflow-hidden dot-bg outline-none" id="canvas-container" tabindex="-1">
+<canvas id="grid-canvas"></canvas>
+<div id="marquee"></div>
 <div class="absolute top-0 left-0 w-full h-full origin-top-left" id="canvas-plane" style="transform: translate(773.222px, 610.222px) scale(0.6);">
 <!-- Nodes -->
 </div>
@@ -462,16 +557,29 @@ a);requestAnimationFrame(function(){g(document.body)})})}var l=["material-icons"
             scrubStart: { x: 0, value: 0 },
             scrubTarget: null,
             
-            pendingDeleteId: null,
+            pendingDeleteIds: null,
             pendingCanvasDeleteId: null,
-            preDragState: null
+            preDragState: null,
+
+            // Selection & group move
+            selection: new Set(),
+            dragIds: [],
+            isMarquee: false,
+            marqueeStart: null,
+            marqueeBase: null,
+            importName: null
         },
+
+        // Muted label palette — fill/border/title are derived from these in CSS
+        labelPalette: ['#7c8798', '#6b97c7', '#6f9a7c', '#b8975f', '#c7808f', '#9585c4'],
 
         editor: null, // Monaco instance
 
         els: {
             container: document.getElementById('canvas-container'),
             plane: document.getElementById('canvas-plane'),
+            grid: document.getElementById('grid-canvas'),
+            marquee: document.getElementById('marquee'),
             toast: document.getElementById('toast'),
             modal: document.getElementById('modal-overlay'),
             modalIframe: document.getElementById('modal-iframe'),
@@ -497,7 +605,11 @@ a);requestAnimationFrame(function(){g(document.body)})})}var l=["material-icons"
             window.addEventListener('keydown', e => this.handleKeydown(e));
             window.addEventListener('keyup', e => this.handleKeyup(e));
             window.addEventListener('paste', e => this.handlePaste(e), true);
-            
+            window.addEventListener('resize', () => this.renderGrid());
+            window.addEventListener('blur', () => this.releaseModifiers());
+
+            this.importFromUrl();
+
             // Unsaved changes warning
             window.onbeforeunload = (e) => {
                 if (this.state.isDirty) {
@@ -558,9 +670,28 @@ a);requestAnimationFrame(function(){g(document.body)})})}var l=["material-icons"
                 // Name is updated via input binding immediately
                 this.saveStorage();
                 this.setDirty(false);
-                this.showToast('Canvas Saved');
+                this.showSavedToast();
                 this.updateCanvasUI();
             }
+        },
+
+        // localStorage has no expiry in Chrome/Firefox; Safari wipes script-written storage
+        // after 7 days without a visit, so that's the only case with a real date.
+        storageExpiryNote() {
+            const ua = navigator.userAgent;
+            const isSafari = /Safari\//.test(ua) && !/Chrome|Chromium|CriOS|Edg|OPR|Firefox|FxiOS/.test(ua);
+            if (isSafari) {
+                const d = new Date(Date.now() + 7 * 864e5);
+                return `until ${d.getMonth() + 1}/${d.getDate()} (Safari clears it after 7 days without a visit)`;
+            }
+            return 'until you clear site data';
+        },
+
+        showSavedToast() {
+            const note = this.storageExpiryNote();
+            const time = new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+            this.showToast(`Canvas saved in this browser ${note}`, 3500);
+            document.getElementById('btn-save-canvas').title = `Saved ${time} · kept in this browser ${note}`;
         },
 
         createCanvas(saveCurrentAsNew = false) {
@@ -572,16 +703,17 @@ a);requestAnimationFrame(function(){g(document.body)})})}var l=["material-icons"
                 const newId = crypto.randomUUID();
                 const newCanvas = {
                     id: newId,
-                    name: 'Canvas ' + (this.state.canvases.length + 1),
+                    name: this.state.importName || ('Canvas ' + (this.state.canvases.length + 1)),
                     nodes: this.state.nodes, // Current nodes
                     lastModified: Date.now()
                 };
+                this.state.importName = null;
                 this.state.canvases.push(newCanvas);
                 this.state.activeCanvasId = newId;
                 this.saveStorage();
                 this.setDirty(false);
                 this.updateCanvasUI();
-                this.showToast('Canvas Created');
+                this.showSavedToast();
             } else {
                 // "Plus" button - Clean slate
                 // If dirty, maybe we should auto-save current if it exists?
@@ -660,7 +792,7 @@ a);requestAnimationFrame(function(){g(document.body)})})}var l=["material-icons"
                 this.els.canvasTitle.classList.add('pointer-events-auto');
                 this.els.canvasTitle.classList.remove('pointer-events-none');
             } else {
-                this.els.canvasTitle.value = 'Canvases';
+                this.els.canvasTitle.value = this.state.importName || 'Canvases';
                 // Allow editing 'Canvases' title which effectively creates a new canvas upon save/rename?
                 // For now, let's keep the previous logic: Rename only active.
                 // But user asked "allow me at any time to rename... by clicking".
@@ -790,25 +922,42 @@ a);requestAnimationFrame(function(){g(document.body)})})}var l=["material-icons"
             labels.forEach(n => this.renderLabel(n));
             snippets.forEach(n => this.renderSnippet(n));
             this.updateAllLabelInteractions();
+            this.pruneSelection();
+        },
+
+        isTyping() {
+            const a = document.activeElement;
+            if (!a) return false;
+            if (a.isContentEditable) return true;
+            return ['INPUT', 'TEXTAREA', 'SELECT'].includes(a.tagName) && !a.readOnly;
         },
 
         handleKeydown(e) {
+            if (e.key === 'Meta' || e.key === 'Control') document.body.classList.add('cmd-down');
+
             // Spacebar Panning
             if (e.code === 'Space' && !this.state.isSpacePressed) {
                 // Don't trigger if typing in an input
-                if (document.activeElement && ['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) return;
-                
+                if (this.isTyping()) return;
+
                 this.state.isSpacePressed = true;
-                this.els.container.style.cursor = 'grab';
+                this.els.container.classList.add('space-pan');
                 e.preventDefault(); 
             }
+            if (e.code === 'Space' && !this.isTyping()) e.preventDefault(); // no page scroll on key repeat
 
             if (e.key === 'Escape') {
+                if (this.isTyping()) { document.activeElement.blur(); return; }
                 this.closeModal();
                 this.closeConfirm();
                 this.els.canvasDropdown.classList.add('hidden');
+                this.setSelection([]);
             }
+
+            if (this.isTyping()) return;
+
             if ((e.ctrlKey || e.metaKey) && e.key === '0') { e.preventDefault(); this.resetZoom(); }
+            if (e.shiftKey && e.code === 'Digit1') { e.preventDefault(); this.fitToContent(); }
             // Undo/Redo
             if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
                 e.preventDefault();
@@ -819,31 +968,150 @@ a);requestAnimationFrame(function(){g(document.body)})})}var l=["material-icons"
                 e.preventDefault();
                 this.redo();
             }
+            // Select all
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'a') {
+                e.preventDefault();
+                this.setSelection(this.state.nodes.map(n => n.id));
+            }
+            // Delete selection
+            if ((e.key === 'Delete' || e.key === 'Backspace') && this.state.selection.size) {
+                e.preventDefault();
+                this.deleteNode([...this.state.selection]);
+            }
+            // Nudge selection
+            const arrows = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
+            if (arrows[e.key] && this.state.selection.size) {
+                e.preventDefault();
+                const step = e.shiftKey ? 10 : 1;
+                const [dx, dy] = arrows[e.key];
+                this.moveNodes(this.collectMoveIds(), dx * step, dy * step);
+                this.updateAllLabelInteractions();
+                this.recordState();
+            }
         },
 
         handleKeyup(e) {
+            if (e.key === 'Meta' || e.key === 'Control') document.body.classList.remove('cmd-down');
             if (e.code === 'Space') {
                 this.state.isSpacePressed = false;
-                if (!this.state.isCanvasDragging) {
-                    this.els.container.style.cursor = '';
-                }
+                this.els.container.classList.remove('space-pan');
             }
+        },
+
+        releaseModifiers() {
+            document.body.classList.remove('cmd-down');
+            this.state.isSpacePressed = false;
+            this.els.container.classList.remove('space-pan');
+        },
+
+        // --- Selection ---
+
+        setSelection(ids) {
+            this.state.selection = new Set(ids);
+            this.renderSelection();
+        },
+
+        pruneSelection() {
+            const existing = new Set(this.state.nodes.map(n => n.id));
+            this.state.selection.forEach(id => { if (!existing.has(id)) this.state.selection.delete(id); });
+            this.renderSelection();
+        },
+
+        renderSelection() {
+            this.els.plane.querySelectorAll('.canvas-node').forEach(el => {
+                el.classList.toggle('selected', this.state.selection.has(el.id.slice(5)));
+            });
+        },
+
+        // Nodes whose center sits inside a label travel with it, like children of a Figma frame
+        nodesInsideLabel(label) {
+            return this.state.nodes.filter(n => {
+                if (n.id === label.id) return false;
+                const cx = n.x + n.width / 2;
+                const cy = n.y + n.height / 2;
+                return cx >= label.x && cx <= label.x + label.width && cy >= label.y && cy <= label.y + label.height;
+            });
+        },
+
+        collectMoveIds() {
+            const ids = new Set(this.state.selection);
+            this.state.selection.forEach(id => {
+                const n = this.state.nodes.find(n => n.id === id);
+                if (n && n.type === 'label') this.nodesInsideLabel(n).forEach(c => ids.add(c.id));
+            });
+            return [...ids];
+        },
+
+        moveNodes(ids, dx, dy) {
+            ids.forEach(id => {
+                const node = this.state.nodes.find(n => n.id === id);
+                if (!node) return;
+                node.x += dx;
+                node.y += dy;
+                const el = document.getElementById(`node-${id}`);
+                if (el) this.updateNodeGeometry(el, node);
+            });
+        },
+
+        screenToWorld(clientX, clientY) {
+            const r = this.els.container.getBoundingClientRect();
+            return {
+                x: (clientX - r.left - this.state.pan.x) / this.state.zoom,
+                y: (clientY - r.top - this.state.pan.y) / this.state.zoom
+            };
+        },
+
+        startMarquee(e) {
+            e.preventDefault();
+            this.els.canvasDropdown.classList.add('hidden');
+            this.state.isMarquee = true;
+            this.state.marqueeStart = { x: e.clientX, y: e.clientY };
+            this.state.marqueeBase = e.shiftKey ? new Set(this.state.selection) : new Set();
+            if (!e.shiftKey) this.setSelection([]);
+        },
+
+        updateMarquee(e) {
+            const s = this.state.marqueeStart;
+            const r = this.els.container.getBoundingClientRect();
+            const x1 = Math.min(s.x, e.clientX), y1 = Math.min(s.y, e.clientY);
+            const x2 = Math.max(s.x, e.clientX), y2 = Math.max(s.y, e.clientY);
+            const m = this.els.marquee;
+            m.style.display = 'block';
+            m.style.left = (x1 - r.left) + 'px';
+            m.style.top = (y1 - r.top) + 'px';
+            m.style.width = (x2 - x1) + 'px';
+            m.style.height = (y2 - y1) + 'px';
+
+            const a = this.screenToWorld(x1, y1);
+            const b = this.screenToWorld(x2, y2);
+            const ids = new Set(this.state.marqueeBase);
+            this.state.nodes.forEach(n => {
+                const touches = n.x < b.x && n.x + n.width > a.x && n.y < b.y && n.y + n.height > a.y;
+                const encloses = n.x >= a.x && n.x + n.width <= b.x && n.y >= a.y && n.y + n.height <= b.y;
+                // Labels only when fully enclosed, so dragging inside a label doesn't grab the label itself
+                if (n.type === 'label' ? encloses : touches) ids.add(n.id);
+            });
+            this.state.selection = ids;
+            this.renderSelection();
         },
 
         // --- Canvas Interaction ---
         setupCanvasEvents() {
             const c = this.els.container;
 
-            // Global mousedown listener for Space Panning
+            const beginPan = e => {
+                e.preventDefault();
+                e.stopPropagation();
+                this.state.isCanvasDragging = true;
+                this.state.lastMouse = { x: e.clientX, y: e.clientY };
+                c.classList.add('grabbing');
+            };
+
+            // Global mousedown listener for Space / middle-button panning
             window.addEventListener('mousedown', e => {
-                if (this.state.isSpacePressed) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    this.state.isCanvasDragging = true;
-                    this.state.lastMouse = { x: e.clientX, y: e.clientY };
-                    c.classList.add('grabbing');
-                    c.style.cursor = 'grabbing';
-                    return; // Stop other interactions
+                const onCanvas = c.contains(e.target);
+                if ((this.state.isSpacePressed && onCanvas) || (e.button === 1 && onCanvas)) {
+                    beginPan(e);
                 }
             }, true); // Capture phase to override element interactions
 
@@ -856,17 +1124,10 @@ a);requestAnimationFrame(function(){g(document.body)})})}var l=["material-icons"
                 // Force focus to container to capture global events
                 c.focus();
 
-                if (e.target === c || e.target === this.els.plane) {
-                    e.preventDefault(); // Prevent default browser selection/focus behavior
-                    this.state.isCanvasDragging = true;
-                    this.state.lastMouse = { x: e.clientX, y: e.clientY };
-                    c.classList.add('grabbing');
-                    // Close dropdown if clicking canvas
-                    this.els.canvasDropdown.classList.add('hidden');
+                if (e.button === 0 && (e.target === c || e.target === this.els.plane)) {
+                    this.startMarquee(e);
                 }
             });
-            // ... (rest of setupCanvasEvents is same, just need to ensure bracket match)
-
 
             window.addEventListener('mousemove', e => {
                 const dx = e.clientX - this.state.lastMouse.x;
@@ -887,14 +1148,11 @@ a);requestAnimationFrame(function(){g(document.body)})})}var l=["material-icons"
                     this.state.pan.y += dy;
                     this.renderTransform();
                 }
-                else if (this.state.isNodeDragging && this.state.activeNodeId) {
-                    const node = this.state.nodes.find(n => n.id === this.state.activeNodeId);
-                    if (node) {
-                        node.x += dx / this.state.zoom;
-                        node.y += dy / this.state.zoom;
-                        const el = document.getElementById(`node-${node.id}`);
-                        if (el) this.updateNodeGeometry(el, node);
-                    }
+                else if (this.state.isMarquee) {
+                    this.updateMarquee(e);
+                }
+                else if (this.state.isNodeDragging) {
+                    this.moveNodes(this.state.dragIds, dx / this.state.zoom, dy / this.state.zoom);
                 }
                 else if (this.state.isResizing && this.state.activeNodeId) {
                     const node = this.state.nodes.find(n => n.id === this.state.activeNodeId);
@@ -922,29 +1180,58 @@ a);requestAnimationFrame(function(){g(document.body)})})}var l=["material-icons"
                 this.state.isNodeDragging = false;
                 this.state.isResizing = false;
                 this.state.isScrubbing = false;
+                this.state.isMarquee = false;
                 this.state.scrubTarget = null;
                 this.state.activeNodeId = null;
+                this.state.dragIds = [];
                 this.state.preDragState = null;
+                this.els.marquee.style.display = 'none';
                 
                 c.classList.remove('grabbing');
                 document.body.style.cursor = '';
-                document.querySelectorAll('.canvas-node').forEach(n => n.classList.remove('selected'));
             });
 
+            // Trackpad: two-finger scroll pans, pinch zooms. Mouse wheel zooms. Cmd/Ctrl+wheel always zooms.
             c.addEventListener('wheel', e => {
                 e.preventDefault();
-                const delta = -e.deltaY * 0.001;
-                const newZoom = Math.min(Math.max(0.1, this.state.zoom + delta), 5);
+                const isPinch = e.ctrlKey; // browsers report trackpad pinch as ctrl+wheel
+                const isTrackpad = e.wheelDeltaY ? e.wheelDeltaY === -3 * e.deltaY : e.deltaMode === 0;
+                if (!isPinch && !e.metaKey && isTrackpad) {
+                    this.state.pan.x -= e.deltaX;
+                    this.state.pan.y -= e.deltaY;
+                    this.renderTransform();
+                    return;
+                }
+                const delta = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY;
+                const factor = Math.exp(-delta * (isPinch ? 0.01 : 0.0015));
                 const rect = c.getBoundingClientRect();
-                const mouseX = e.clientX - rect.left;
-                const mouseY = e.clientY - rect.top;
-                const worldX = (mouseX - this.state.pan.x) / this.state.zoom;
-                const worldY = (mouseY - this.state.pan.y) / this.state.zoom;
-                this.state.pan.x = mouseX - worldX * newZoom;
-                this.state.pan.y = mouseY - worldY * newZoom;
-                this.state.zoom = newZoom;
-                this.renderTransform();
+                this.zoomAt(this.state.zoom * factor, e.clientX - rect.left, e.clientY - rect.top);
             }, { passive: false });
+
+            // Safari reports trackpad pinch as gesture events rather than ctrl+wheel
+            let gestureZoom = 1;
+            c.addEventListener('gesturestart', e => { e.preventDefault(); gestureZoom = this.state.zoom; });
+            c.addEventListener('gesturechange', e => {
+                e.preventDefault();
+                const rect = c.getBoundingClientRect();
+                this.zoomAt(gestureZoom * e.scale, e.clientX - rect.left, e.clientY - rect.top);
+            });
+            c.addEventListener('gestureend', e => e.preventDefault());
+        },
+
+        zoomAt(newZoom, sx, sy) {
+            newZoom = Math.min(Math.max(0.05, newZoom), 5);
+            const worldX = (sx - this.state.pan.x) / this.state.zoom;
+            const worldY = (sy - this.state.pan.y) / this.state.zoom;
+            this.state.pan.x = sx - worldX * newZoom;
+            this.state.pan.y = sy - worldY * newZoom;
+            this.state.zoom = newZoom;
+            this.renderTransform();
+        },
+
+        zoomFromCenter(factor) {
+            const r = this.els.container.getBoundingClientRect();
+            this.zoomAt(this.state.zoom * factor, r.width / 2, r.height / 2);
         },
 
         renderTransform() {
@@ -952,8 +1239,74 @@ a);requestAnimationFrame(function(){g(document.body)})})}var l=["material-icons"
             const z = this.state.zoom;
             this.els.plane.style.transform = `translate(${x}px, ${y}px) scale(${z})`;
             document.getElementById('btn-zoom-reset').innerText = `${Math.round(z * 100)}%`;
-            this.els.container.style.backgroundPosition = `${x}px ${y}px`;
-            this.els.container.style.backgroundSize = `${24 * z}px ${24 * z}px`;
+
+            // Titles/buttons are sized in screen pixels via --px (one screen pixel in world units)
+            // and --ui (scale factor for chrome), so they never balloon or shrink with zoom.
+            const p = this.els.plane.style;
+            p.setProperty('--px', (1 / z) + 'px');
+            p.setProperty('--ui', 1 / z);
+            document.body.classList.toggle('zoom-far', z < 0.1);
+            document.body.classList.toggle('zoom-tiny', z < 0.2);
+
+            this.renderGrid();
+        },
+
+        // FigJam-style dot grid: constant-size dots snapped to device pixels (so every dot renders
+        // identically), spacing doubles when it gets dense, and the in-between dots crossfade out.
+        renderGrid() {
+            if (this._gridFrame) return;
+            this._gridFrame = requestAnimationFrame(() => {
+                this._gridFrame = null;
+                const cv = this.els.grid;
+                const dpr = window.devicePixelRatio || 1;
+                const w = this.els.container.clientWidth;
+                const h = this.els.container.clientHeight;
+                if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)) {
+                    cv.width = Math.round(w * dpr);
+                    cv.height = Math.round(h * dpr);
+                }
+                const ctx = cv.getContext('2d');
+                ctx.setTransform(1, 0, 0, 1, 0, 0);
+                ctx.clearRect(0, 0, cv.width, cv.height);
+
+                const base = 24, minGap = 16;
+                let gap = base * this.state.zoom;
+                while (gap < minGap) gap *= 2;
+                // In-between dots fade from 0 (at minGap) to full (at 2x minGap)
+                const fade = Math.min(Math.max((gap - minGap) / minGap, 0), 1);
+
+                const dark = this.state.theme === 'dark';
+                const color = dark ? '255, 255, 255' : '0, 0, 0';
+                const alpha = dark ? 0.16 : 0.2;
+                const size = Math.max(2, Math.round(1.5 * dpr)); // dot diameter in device px
+                const half = size / 2;
+
+                const ox = ((this.state.pan.x % gap) + gap) % gap;
+                const oy = ((this.state.pan.y % gap) + gap) % gap;
+                // World-grid index of the first visible column/row, so coarse dots stay put
+                const ix0 = Math.round((ox - this.state.pan.x) / gap);
+                const iy0 = Math.round((oy - this.state.pan.y) / gap);
+                const even = n => (((n % 2) + 2) % 2) === 0;
+
+                const drawLevel = (coarse, a) => {
+                    if (a <= 0.01) return;
+                    ctx.fillStyle = `rgba(${color}, ${a})`;
+                    ctx.beginPath();
+                    for (let i = 0, x = ox; x < w + gap; x += gap, i++) {
+                        const colEven = even(ix0 + i);
+                        const px = Math.round(x * dpr);
+                        for (let j = 0, y = oy; y < h + gap; y += gap, j++) {
+                            if ((colEven && even(iy0 + j)) !== coarse) continue;
+                            const py = Math.round(y * dpr);
+                            ctx.moveTo(px + half, py);
+                            ctx.arc(px, py, half, 0, Math.PI * 2);
+                        }
+                    }
+                    ctx.fill();
+                };
+                drawLevel(true, alpha);
+                drawLevel(false, alpha * fade);
+            });
         },
 
         centerView() {
@@ -963,6 +1316,22 @@ a);requestAnimationFrame(function(){g(document.body)})})}var l=["material-icons"
         },
 
         resetZoom() { this.state.zoom = 0.6; this.centerView(); },
+
+        fitToContent() {
+            if (!this.state.nodes.length) return this.resetZoom();
+            let x1 = Infinity, y1 = Infinity, x2 = -Infinity, y2 = -Infinity;
+            this.state.nodes.forEach(n => {
+                x1 = Math.min(x1, n.x); y1 = Math.min(y1, n.y - (n.type === 'snippet' ? 60 : 0));
+                x2 = Math.max(x2, n.x + n.width); y2 = Math.max(y2, n.y + n.height);
+            });
+            const r = this.els.container.getBoundingClientRect();
+            const pad = 80, bottomBar = 90;
+            const z = Math.min(Math.max(Math.min((r.width - pad * 2) / (x2 - x1), (r.height - pad * 2 - bottomBar) / (y2 - y1)), 0.05), 1);
+            this.state.zoom = z;
+            this.state.pan.x = (r.width - (x2 - x1) * z) / 2 - x1 * z;
+            this.state.pan.y = (r.height - bottomBar - (y2 - y1) * z) / 2 - y1 * z;
+            this.renderTransform();
+        },
 
         // --- Logic Helpers ---
 
@@ -1007,13 +1376,12 @@ a);requestAnimationFrame(function(){g(document.body)})})}var l=["material-icons"
         updateLabelDependents(labelNode) {
             const labelEl = document.getElementById(`node-${labelNode.id}`);
             if (labelEl) {
-                labelEl.style.backgroundColor = labelNode.color + '25'; 
-                labelEl.style.borderColor = labelNode.color;
-                const ta = labelEl.querySelector('textarea');
-                if (ta) ta.style.color = labelNode.color;
-                
-                const titleInput = labelEl.querySelector('.label-title');
-                if (titleInput) titleInput.style.color = labelNode.color;
+                labelEl.style.setProperty('--label-color', labelNode.color);
+                labelEl.querySelectorAll('.palette-dot').forEach(d => {
+                    d.classList.toggle('active', d.dataset.color.toLowerCase() === labelNode.color.toLowerCase());
+                });
+                const swatch = labelEl.querySelector('.color-swatch');
+                if (swatch && swatch.value !== labelNode.color) swatch.value = labelNode.color;
             }
             this.updateAllLabelInteractions();
         },
@@ -1104,6 +1472,7 @@ a);requestAnimationFrame(function(){g(document.body)})})}var l=["material-icons"
             });
             this.showToast('Canvas Configuration Loaded');
             this.updateAllLabelInteractions();
+            this.pruneSelection();
         },
 
         createSnippetNode(content, config = null) {
@@ -1149,7 +1518,7 @@ a);requestAnimationFrame(function(){g(document.body)})})}var l=["material-icons"
                 id: config ? config.id : crypto.randomUUID(),
                 type: 'label',
                 text: config ? config.text : 'Label',
-                color: config ? config.color : '#3b82f6',
+                color: config ? config.color : this.nextLabelColor(),
                 x, y, width, height
             };
             this.state.nodes.unshift(node);
@@ -1157,22 +1526,34 @@ a);requestAnimationFrame(function(){g(document.body)})})}var l=["material-icons"
             this.recordState();
         },
 
-        deleteNode(id) {
-            this.state.pendingDeleteId = id;
+        nextLabelColor() {
+            const used = this.state.nodes.filter(n => n.type === 'label').length;
+            return this.labelPalette[used % this.labelPalette.length];
+        },
+
+        deleteNode(ids) {
+            ids = Array.isArray(ids) ? ids : [ids];
+            this.state.pendingDeleteIds = ids;
+            if (ids.length > 1) {
+                this.els.confirmModal.querySelector('h3').innerText = `Delete ${ids.length} Items?`;
+                this.els.confirmModal.querySelector('p').innerText = 'Are you sure you want to remove these items from the canvas?';
+            }
             this.els.confirmModal.classList.remove('hidden');
         },
 
         confirmDelete() {
             // Handle Item Delete
-            if (this.state.pendingDeleteId) {
-                const idx = this.state.nodes.findIndex(n => n.id === this.state.pendingDeleteId);
-                if (idx > -1) {
-                    this.state.nodes.splice(idx, 1);
-                    document.getElementById(`node-${this.state.pendingDeleteId}`).remove();
+            if (this.state.pendingDeleteIds) {
+                const ids = new Set(this.state.pendingDeleteIds);
+                const before = this.state.nodes.length;
+                this.state.nodes = this.state.nodes.filter(n => !ids.has(n.id));
+                ids.forEach(id => document.getElementById(`node-${id}`)?.remove());
+                if (this.state.nodes.length !== before) {
                     this.updateAllLabelInteractions();
+                    this.pruneSelection();
                     this.recordState();
                 }
-                this.state.pendingDeleteId = null;
+                this.state.pendingDeleteIds = null;
             }
             
             // Handle Canvas Delete
@@ -1207,7 +1588,7 @@ a);requestAnimationFrame(function(){g(document.body)})})}var l=["material-icons"
         },
 
         closeConfirm() {
-            this.state.pendingDeleteId = null;
+            this.state.pendingDeleteIds = null;
             this.state.pendingCanvasDeleteId = null;
             this.els.confirmModal.classList.add('hidden');
             
@@ -1228,8 +1609,9 @@ a);requestAnimationFrame(function(){g(document.body)})})}var l=["material-icons"
             const header = document.createElement('div');
             header.className = 'node-header';
             header.innerHTML = `
-                <input class="node-title select-none bg-transparent border-none outline-none w-48 truncate" value="${node.version}" spellcheck="false">
+                <input class="node-title select-none bg-transparent border-none outline-none truncate" value="${node.version}" spellcheck="false" readonly title="Double-click to rename">
                 <div class="node-actions">
+                    <button class="action-btn node-open" title="Open site (⌘+click)"><span class="material-symbols-outlined">open_in_new</span></button>
                     <button class="action-btn" id="btn-settings-${node.id}" title="Settings"><span class="material-symbols-outlined">settings</span></button>
                     <button class="action-btn node-copy" title="Copy Code"><span class="material-symbols-outlined">content_copy</span></button>
                     <button class="action-btn node-full" title="Fullscreen"><span class="material-symbols-outlined">fullscreen</span></button>
@@ -1237,21 +1619,16 @@ a);requestAnimationFrame(function(){g(document.body)})})}var l=["material-icons"
                 </div>
             `;
             const titleInput = header.querySelector('.node-title');
-            titleInput.addEventListener('mousedown', e => { e.stopPropagation(); }); // Allow focus
             titleInput.oninput = e => { node.version = e.target.value; };
-            titleInput.onchange = () => this.recordState();
-            
-            // Allow dragging from the area around the input if needed, or rely on other areas
-            // header.addEventListener('mousedown', e => { if(e.target !== titleInput) this.startDrag(e, node.id); }); 
-            // Better: make a drag handle or just rely on the fact that the header is big
-            
-            // Re-bind drag to the header itself but exclude the input interaction
+            this.makeRenamable(titleInput, () => this.recordState());
+
+            // Title drags the node; double-click renames
             header.addEventListener('mousedown', e => {
-                if (e.target !== titleInput && !e.target.closest('.node-actions')) {
-                    this.startDrag(e, node.id);
-                }
+                if (!titleInput.readOnly && e.target === titleInput) { e.stopPropagation(); return; }
+                if (!e.target.closest('.node-actions')) this.startDrag(e, node.id);
             });
 
+            header.querySelector('.node-open').onclick = e => { e.stopPropagation(); this.openSite(node); };
             header.querySelector('.node-del').onclick = e => { e.stopPropagation(); this.deleteNode(node.id); };
             header.querySelector('.node-full').onclick = e => { e.stopPropagation(); this.openModal(node); };
             header.querySelector('.node-copy').onclick = e => { e.stopPropagation(); this.copyNodeCode(node); };
@@ -1276,8 +1653,15 @@ a);requestAnimationFrame(function(){g(document.body)})})}var l=["material-icons"
             iframe.sandbox = 'allow-scripts allow-same-origin';
             
             const overlay = document.createElement('div');
-            overlay.className = 'absolute inset-0 z-10';
-            overlay.addEventListener('mousedown', e => this.startDrag(e, node.id));
+            overlay.className = 'snippet-overlay absolute inset-0 z-10';
+            overlay.innerHTML = '<div class="open-hint"><span class="material-symbols-outlined">open_in_new</span>Open site</div>';
+            overlay.addEventListener('mousedown', e => {
+                if (e.metaKey || e.ctrlKey) { e.preventDefault(); e.stopPropagation(); return; }
+                this.startDrag(e, node.id);
+            });
+            overlay.addEventListener('click', e => {
+                if (e.metaKey || e.ctrlKey) { e.stopPropagation(); this.openSite(node); }
+            });
 
             scaleWrap.appendChild(iframe);
             preview.appendChild(scaleWrap);
@@ -1380,28 +1764,45 @@ a);requestAnimationFrame(function(){g(document.body)})})}var l=["material-icons"
         renderLabel(node) {
             const el = document.createElement('div');
             el.id = `node-${node.id}`;
-            el.className = 'canvas-node type-label border-4 rounded-3xl flex flex-col group';
-            el.style.backgroundColor = node.color + '25'; 
-            el.style.borderColor = node.color;
+            el.className = 'canvas-node type-label flex flex-col group';
+            el.style.setProperty('--label-color', node.color);
             this.updateNodeGeometry(el, node);
 
             const header = document.createElement('div');
             header.className = 'label-header';
 
+            const dots = this.labelPalette.map(c =>
+                `<span class="palette-dot" data-color="${c}" style="background:${c}; color:${c}" title="${c}"></span>`
+            ).join('');
             header.innerHTML = `
-                <input class="label-title" value="${node.text}" style="color: ${node.color}">
+                <input class="label-title" value="${node.text}" readonly spellcheck="false" title="Double-click to rename">
                 <div class="label-controls">
-                    <div class="color-swatch-wrapper">
-                        <input type="color" class="color-swatch" value="${node.color}">
+                    <div class="label-palette">
+                        ${dots}
+                        <div class="color-swatch-wrapper" title="Custom color">
+                            <input type="color" class="color-swatch" value="${node.color}">
+                        </div>
                     </div>
-                    <button class="action-btn delete label-del" style="padding:10px;"><span class="material-symbols-outlined" style="font-size:28px">delete</span></button>
+                    <button class="action-btn delete label-del" title="Delete label"><span class="material-symbols-outlined">delete</span></button>
                 </div>
             `;
-            
+
             const titleInput = header.querySelector('.label-title');
-            titleInput.oninput = e => node.text = e.target.value;
-            titleInput.onchange = () => this.recordState();
-            titleInput.onmousedown = e => e.stopPropagation();
+            // Size the input to its text so the controls sit right after the title
+            const fitTitle = () => { titleInput.size = titleInput.value.length + 2; }; // +2: size is in average-char units
+            fitTitle();
+            titleInput.oninput = e => { node.text = e.target.value; fitTitle(); };
+            this.makeRenamable(titleInput, () => this.recordState());
+
+            header.querySelectorAll('.palette-dot').forEach(dot => {
+                dot.onmousedown = e => e.stopPropagation();
+                dot.onclick = e => {
+                    e.stopPropagation();
+                    node.color = dot.dataset.color;
+                    this.updateLabelDependents(node);
+                    this.recordState();
+                };
+            });
 
             const colorInput = header.querySelector('.color-swatch');
             colorInput.oninput = e => {
@@ -1412,10 +1813,18 @@ a);requestAnimationFrame(function(){g(document.body)})})}var l=["material-icons"
             colorInput.onmousedown = e => e.stopPropagation();
 
             const delBtn = header.querySelector('.label-del');
+            delBtn.onmousedown = e => e.stopPropagation();
             delBtn.onclick = e => { e.stopPropagation(); this.deleteNode(node.id); };
-            
+
+            // Header (title strip) moves the label together with everything inside it.
+            // Empty label body behaves like the canvas: drag to marquee-select.
+            header.addEventListener('mousedown', e => {
+                if (!titleInput.readOnly && e.target === titleInput) { e.stopPropagation(); return; }
+                if (e.target.closest('.label-controls')) return;
+                this.startDrag(e, node.id);
+            });
             el.addEventListener('mousedown', e => {
-                if(e.target === el || e.target === header) this.startDrag(e, node.id);
+                if (e.target === el && e.button === 0) { e.stopPropagation(); this.els.container.focus(); this.startMarquee(e); }
             });
 
             const resizer = document.createElement('div');
@@ -1424,6 +1833,46 @@ a);requestAnimationFrame(function(){g(document.body)})})}var l=["material-icons"
 
             el.append(header, resizer);
             this.els.plane.insertBefore(el, this.els.plane.firstChild);
+            this.updateLabelDependents(node);
+        },
+
+        // Read-only titles act as drag handles; double-click switches to editing
+        makeRenamable(input, onCommit) {
+            input.addEventListener('dblclick', e => {
+                e.stopPropagation();
+                input.readOnly = false;
+                input.focus();
+                input.select();
+            });
+            input.addEventListener('keydown', e => {
+                if (e.key === 'Enter') input.blur();
+            });
+            input.addEventListener('blur', () => {
+                if (input.readOnly) return;
+                input.readOnly = true;
+                window.getSelection()?.removeAllRanges();
+                onCommit();
+            });
+        },
+
+        siteUrl(node) {
+            if (node.url) return node.url; // explicit link for snippets that aren't a plain iframe
+            const m = (node.content || '').match(/<iframe[^>]*\ssrc=["']([^"']+)["']/i);
+            return m ? m[1] : null;
+        },
+
+        openSite(node) {
+            const url = this.siteUrl(node);
+            if (url) {
+                window.open(url, '_blank', 'noopener');
+                return;
+            }
+            // Plain HTML snippet: open it as a standalone page
+            let css = ':root, body {';
+            Object.entries(node.cssVars || {}).forEach(([k, v]) => css += `${k}: ${v};`);
+            css += '}';
+            const blob = new Blob([`<!DOCTYPE html><html><head><style>${css}</style></head><body>${node.content}</body></html>`], { type: 'text/html' });
+            window.open(URL.createObjectURL(blob), '_blank');
         },
 
         updateNodeGeometry(el, node) {
@@ -1443,19 +1892,27 @@ a);requestAnimationFrame(function(){g(document.body)})})}var l=["material-icons"
 
         // --- Basic Ops ---
         startDrag(e, id) {
+            if (e.button !== 0) return;
             e.preventDefault(); e.stopPropagation();
             
             // Force focus to container to capture keyboard events
             this.els.container.focus();
+            this.els.canvasDropdown.classList.add('hidden');
+
+            if (e.shiftKey) {
+                const sel = new Set(this.state.selection);
+                if (sel.has(id)) { sel.delete(id); this.setSelection([...sel]); return; }
+                sel.add(id);
+                this.setSelection([...sel]);
+            } else if (!this.state.selection.has(id)) {
+                this.setSelection([id]);
+            }
 
             this.state.preDragState = JSON.stringify(this.state.nodes);
             this.state.isCanvasDragging = false;
             this.state.isNodeDragging = true;
-            this.state.activeNodeId = id;
+            this.state.dragIds = this.collectMoveIds();
             this.state.lastMouse = { x: e.clientX, y: e.clientY };
-            document.querySelectorAll('.canvas-node').forEach(n => n.classList.remove('selected'));
-            const el = document.getElementById(`node-${id}`);
-            if (el) el.classList.add('selected');
         },
 
         startResize(e, id) {
@@ -1542,15 +1999,10 @@ a);requestAnimationFrame(function(){g(document.body)})})}var l=["material-icons"
         },
 
         setupUIEvents() {
-            document.getElementById('btn-zoom-in').onclick = () => { 
-                this.state.zoom = Math.min(5, this.state.zoom + 0.1); 
-                this.renderTransform(); 
-            };
-            document.getElementById('btn-zoom-out').onclick = () => { 
-                this.state.zoom = Math.max(0.1, this.state.zoom - 0.1); 
-                this.renderTransform(); 
-            };
+            document.getElementById('btn-zoom-in').onclick = () => this.zoomFromCenter(1.25);
+            document.getElementById('btn-zoom-out').onclick = () => this.zoomFromCenter(0.8);
             document.getElementById('btn-zoom-reset').onclick = () => this.resetZoom();
+            document.getElementById('btn-zoom-fit').onclick = () => this.fitToContent();
 
             document.getElementById('btn-theme').onclick = () => {
                 this.state.theme = this.state.theme === 'light' ? 'dark' : 'light';
@@ -1660,6 +2112,7 @@ a);requestAnimationFrame(function(){g(document.body)})})}var l=["material-icons"
             if(this.editor && window.monaco) {
                 monaco.editor.setTheme(this.state.theme === 'dark' ? 'vs-dark' : 'vs');
             }
+            this.renderGrid();
         },
 
         openModal(node) {
@@ -1741,15 +2194,41 @@ a);requestAnimationFrame(function(){g(document.body)})})}var l=["material-icons"
             this.state.activeModalNodeId = null;
         },
 
-        showToast(msg) {
+        showToast(msg, duration = 2000) {
             const t = this.els.toast;
             t.innerText = msg;
             t.style.opacity = 1;
             t.style.transform = 'translate(-50%, 0)';
-            setTimeout(() => {
+            clearTimeout(this._toastTimer);
+            this._toastTimer = setTimeout(() => {
                 t.style.opacity = 0;
                 t.style.transform = 'translate(-50%, 16px)';
-            }, 2000);
+            }, duration);
+        },
+
+        // ?import=path/to/canvas.json loads a canvas file shipped with the site (same-origin only,
+        // since snippets run with allow-same-origin and could otherwise read this app's storage).
+        async importFromUrl() {
+            const path = new URLSearchParams(location.search).get('import');
+            if (!path) return;
+            try {
+                const url = new URL(path, location.href);
+                if (url.origin !== location.origin) throw new Error('Cross-origin import blocked');
+                const data = await (await fetch(url)).json();
+                if (!Array.isArray(data.nodes)) throw new Error('No nodes');
+                this.state.activeCanvasId = null;
+                this.state.importName = data.name || null;
+                this.state.selection.clear();
+                this.loadCanvasState(data);
+                this.recordState();
+                this.setDirty(true);
+                this.updateCanvasUI();
+                this.fitToContent();
+                this.showToast(`Loaded ${data.name || path} · press save to keep it`, 3500);
+            } catch (err) {
+                console.error('Import failed', err);
+                this.showToast('Could not import canvas');
+            }
         }
     };
 
