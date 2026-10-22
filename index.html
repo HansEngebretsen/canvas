@@ -112,6 +112,17 @@ a);requestAnimationFrame(function(){g(document.body)})})}var l=["material-icons"
         border-radius: 2px;
     }
 
+    /*
+     * Zoom-independent chrome. Title strips, resizers and hints are laid out in plain screen
+     * pixels and counter-scaled by JS (transform: scale(1/zoom)) — a compositor-only change.
+     * Hairlines use --px (one screen pixel in world units), registered non-inheriting so only
+     * the elements that use it recalculate when it changes.
+     */
+    @property --px { syntax: '<length>'; inherits: false; initial-value: 1px; }
+
+    /* Plane is always composited (translate3d); while zooming its raster is frozen */
+    #canvas-plane.zooming { will-change: transform; }
+
     /* Node Architecture */
     .canvas-node {
         position: absolute;
@@ -134,16 +145,13 @@ a);requestAnimationFrame(function(){g(document.body)})})}var l=["material-icons"
     body.zoom-far .node-header { opacity: 0; pointer-events: none; }
     body.zoom-tiny .node-actions { display: none; }
 
-    /*
-     * Figma-style chrome: titles and buttons live in world space but are sized in
-     * screen pixels (multiples of --px / --ui), so they read the same at every zoom.
-     */
     .node-header {
         position: absolute;
         bottom: 100%;
         left: 0;
         width: 100%;
-        padding-bottom: calc(var(--px, 1px) * 6);
+        padding-bottom: 6px;
+        transform-origin: bottom left;
         display: flex;
         align-items: flex-end;
         pointer-events: none;
@@ -154,7 +162,7 @@ a);requestAnimationFrame(function(){g(document.body)})})}var l=["material-icons"
     .node-title {
         font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
         font-weight: 500;
-        font-size: calc(var(--px, 1px) * 12);
+        font-size: 12px;
         line-height: 1.2;
         padding: 0;
         cursor: default;
@@ -169,17 +177,15 @@ a);requestAnimationFrame(function(){g(document.body)})})}var l=["material-icons"
     .node-actions {
         position: absolute;
         right: 0;
-        bottom: calc(var(--px, 1px) * 6);
+        bottom: 6px;
         display: flex;
         gap: 4px;
         opacity: 0;
         transition: opacity 0.15s;
-        transform: scale(var(--ui, 1));
-        transform-origin: bottom right;
     }
     .canvas-node:hover .node-actions { opacity: 1; }
 
-    /* Action Buttons (sized in screen px, scaled by --ui) */
+    /* Action Buttons (screen px; their title strip is counter-scaled) */
     .action-btn {
         background: white;
         border: 1px solid rgba(0,0,0,0.08);
@@ -233,7 +239,7 @@ a);requestAnimationFrame(function(){g(document.body)})})}var l=["material-icons"
     .open-hint {
         position: absolute;
         top: 50%; left: 50%;
-        transform: translate(-50%, -50%) scale(var(--ui, 1));
+        transform: translate(-50%, -50%);
         display: flex; align-items: center; gap: 6px;
         padding: 6px 12px;
         border-radius: 999px;
@@ -321,16 +327,17 @@ a);requestAnimationFrame(function(){g(document.body)})})}var l=["material-icons"
         bottom: 100%;
         left: 0;
         width: 100%;
-        padding: 0 0 calc(var(--px, 1px) * 8) calc(var(--px, 1px) * 2);
+        padding: 0 0 8px 2px;
         display: flex;
         align-items: flex-end;
         cursor: default;
+        transform-origin: bottom left;
     }
 
     .label-title {
         font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
         font-weight: 500;
-        font-size: calc(var(--px, 1px) * 14);
+        font-size: 14px;
         background: transparent;
         border: none;
         outline: none;
@@ -348,13 +355,11 @@ a);requestAnimationFrame(function(){g(document.body)})})}var l=["material-icons"
     /* Controls follow the title (not the far edge) so they're on screen even on wide labels */
     .label-controls {
         flex: none;
-        margin-left: calc(var(--px, 1px) * 8);
-        margin-bottom: calc(var(--px, 1px) * -2);
+        margin-left: 8px;
+        margin-bottom: -2px;
         display: flex; gap: 6px; align-items: center;
         opacity: 0;
         transition: opacity 0.15s;
-        transform: scale(var(--ui, 1));
-        transform-origin: bottom left;
     }
     .type-label:hover > .label-header .label-controls { opacity: 1; }
 
@@ -405,7 +410,8 @@ a);requestAnimationFrame(function(){g(document.body)})})}var l=["material-icons"
     .node-resizer {
         position: absolute;
         bottom: 0; right: 0;
-        width: calc(var(--px, 1px) * 14); height: calc(var(--px, 1px) * 14);
+        width: 14px; height: 14px;
+        transform-origin: bottom right;
         cursor: nwse-resize; z-index: 60;
         background: linear-gradient(135deg, transparent 50%, #a1a1aa 50%);
         border-bottom-right-radius: 12px;
@@ -605,7 +611,7 @@ a);requestAnimationFrame(function(){g(document.body)})})}var l=["material-icons"
             window.addEventListener('keydown', e => this.handleKeydown(e));
             window.addEventListener('keyup', e => this.handleKeyup(e));
             window.addEventListener('paste', e => this.handlePaste(e), true);
-            window.addEventListener('resize', () => this.renderGrid());
+            window.addEventListener('resize', () => { this.measureView(); this.requestRender(); });
             window.addEventListener('blur', () => this.releaseModifiers());
 
             this.importFromUrl();
@@ -946,6 +952,13 @@ a);requestAnimationFrame(function(){g(document.body)})})}var l=["material-icons"
             }
             if (e.code === 'Space' && !this.isTyping()) e.preventDefault(); // no page scroll on key repeat
 
+            const mod = e.metaKey || e.ctrlKey;
+            if (mod && !e.altKey) {
+                if (e.key === '=' || e.key === '+' || e.code === 'Equal' || e.code === 'NumpadAdd') { e.preventDefault(); this.zoomStep(1); return; }
+                if (e.key === '-' || e.key === '_' || e.code === 'Minus' || e.code === 'NumpadSubtract') { e.preventDefault(); this.zoomStep(-1); return; }
+                if (e.key === '0' || e.code === 'Digit0' || e.code === 'Numpad0') { e.preventDefault(); this.zoomTo100(); return; }
+            }
+
             if (e.key === 'Escape') {
                 if (this.isTyping()) { document.activeElement.blur(); return; }
                 this.closeModal();
@@ -956,8 +969,9 @@ a);requestAnimationFrame(function(){g(document.body)})})}var l=["material-icons"
 
             if (this.isTyping()) return;
 
-            if ((e.ctrlKey || e.metaKey) && e.key === '0') { e.preventDefault(); this.resetZoom(); }
-            if (e.shiftKey && e.code === 'Digit1') { e.preventDefault(); this.fitToContent(); }
+            if (e.shiftKey && !mod && e.code === 'Digit0') { e.preventDefault(); this.zoomTo100(); }
+            if (e.shiftKey && !mod && e.code === 'Digit1') { e.preventDefault(); this.fitToContent(); }
+            if (e.shiftKey && !mod && e.code === 'Digit2') { e.preventDefault(); this.fitToSelection(); }
             // Undo/Redo
             if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
                 e.preventDefault();
@@ -1144,9 +1158,7 @@ a);requestAnimationFrame(function(){g(document.body)})})}var l=["material-icons"
                 }
 
                 if (this.state.isCanvasDragging) {
-                    this.state.pan.x += dx;
-                    this.state.pan.y += dy;
-                    this.renderTransform();
+                    this.panBy(dx, dy);
                 }
                 else if (this.state.isMarquee) {
                     this.updateMarquee(e);
@@ -1191,146 +1203,300 @@ a);requestAnimationFrame(function(){g(document.body)})})}var l=["material-icons"
                 document.body.style.cursor = '';
             });
 
-            // Trackpad: two-finger scroll pans, pinch zooms. Mouse wheel zooms. Cmd/Ctrl+wheel always zooms.
-            c.addEventListener('wheel', e => {
-                e.preventDefault();
-                const isPinch = e.ctrlKey; // browsers report trackpad pinch as ctrl+wheel
-                const isTrackpad = e.wheelDeltaY ? e.wheelDeltaY === -3 * e.deltaY : e.deltaMode === 0;
-                if (!isPinch && !e.metaKey && isTrackpad) {
-                    this.state.pan.x -= e.deltaX;
-                    this.state.pan.y -= e.deltaY;
-                    this.renderTransform();
+            // Deterministic, Figma-style: scroll pans (Shift+scroll goes sideways); pinch or
+            // Cmd/Ctrl+scroll zooms. Handlers only update camera numbers — one rAF frame applies them.
+            window.addEventListener('wheel', e => {
+                const zoomIntent = e.ctrlKey || e.metaKey; // trackpad pinch arrives as ctrl+wheel
+                if (!c.contains(e.target)) {
+                    if (zoomIntent) e.preventDefault(); // never browser page-zoom over the toolbar
                     return;
                 }
-                const delta = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY;
-                const factor = Math.exp(-delta * (isPinch ? 0.01 : 0.0015));
-                const rect = c.getBoundingClientRect();
-                this.zoomAt(this.state.zoom * factor, e.clientX - rect.left, e.clientY - rect.top);
+                e.preventDefault();
+                const unit = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? c.clientHeight : 1;
+                let dx = e.deltaX * unit, dy = e.deltaY * unit;
+                if (zoomIntent) {
+                    if (this._gesturing) return;
+                    const rect = c.getBoundingClientRect();
+                    const sx = e.clientX - rect.left, sy = e.clientY - rect.top;
+                    if (Math.abs(dy) >= 50) {
+                        // Mouse-wheel notch: glide to the next step instead of jumping
+                        this.zoomBy(Math.exp(-dy * 0.0025), sx, sy);
+                    } else {
+                        // Pinch / smooth scroll: follow the fingers 1:1
+                        this.zoomAt(this.state.zoom * Math.exp(-dy * (e.ctrlKey ? 0.01 : 0.005)), sx, sy);
+                    }
+                    return;
+                }
+                if (e.shiftKey && dx === 0) { dx = dy; dy = 0; }
+                this.panBy(-dx, -dy);
             }, { passive: false });
 
             // Safari reports trackpad pinch as gesture events rather than ctrl+wheel
             let gestureZoom = 1;
-            c.addEventListener('gesturestart', e => { e.preventDefault(); gestureZoom = this.state.zoom; });
-            c.addEventListener('gesturechange', e => {
+            window.addEventListener('gesturestart', e => {
                 e.preventDefault();
+                if (!c.contains(e.target)) return;
+                this._gesturing = true;
+                gestureZoom = this.state.zoom;
+            });
+            window.addEventListener('gesturechange', e => {
+                e.preventDefault();
+                if (!this._gesturing) return;
                 const rect = c.getBoundingClientRect();
                 this.zoomAt(gestureZoom * e.scale, e.clientX - rect.left, e.clientY - rect.top);
             });
-            c.addEventListener('gestureend', e => e.preventDefault());
+            window.addEventListener('gestureend', e => { e.preventDefault(); this._gesturing = false; });
         },
 
-        zoomAt(newZoom, sx, sy) {
-            newZoom = Math.min(Math.max(0.05, newZoom), 5);
-            const worldX = (sx - this.state.pan.x) / this.state.zoom;
-            const worldY = (sy - this.state.pan.y) / this.state.zoom;
-            this.state.pan.x = sx - worldX * newZoom;
-            this.state.pan.y = sy - worldY * newZoom;
-            this.state.zoom = newZoom;
-            this.renderTransform();
+        // --- Camera ---
+        // Direct input (pan, pinch) applies 1:1; stepped input (wheel notches, keys, buttons)
+        // glides via _zoomAnim; view jumps (fit, 100%) tween via _tween. All rendering happens
+        // in frame(), at most once per display frame.
+
+        clampZoom(z) { return Math.min(Math.max(z, 0.05), 5); },
+
+        setZoomAround(z, sx, sy) {
+            z = this.clampZoom(z);
+            const wx = (sx - this.state.pan.x) / this.state.zoom;
+            const wy = (sy - this.state.pan.y) / this.state.zoom;
+            this.state.pan.x = sx - wx * z;
+            this.state.pan.y = sy - wy * z;
+            this.state.zoom = z;
         },
 
-        zoomFromCenter(factor) {
-            const r = this.els.container.getBoundingClientRect();
-            this.zoomAt(this.state.zoom * factor, r.width / 2, r.height / 2);
+        panBy(dx, dy) {
+            this._tween = null;
+            this.state.pan.x += dx;
+            this.state.pan.y += dy;
+            this.requestRender();
         },
 
-        renderTransform() {
+        zoomAt(z, sx, sy) {
+            this._zoomAnim = null;
+            this._tween = null;
+            this.setZoomAround(z, sx, sy);
+            this.requestRender();
+        },
+
+        zoomBy(factor, sx, sy) {
+            const base = this._zoomAnim ? this._zoomAnim.to : this.state.zoom;
+            this._tween = null;
+            this._zoomAnim = { to: this.clampZoom(base * factor), sx, sy };
+            this.requestRender();
+        },
+
+        // Viewport size is cached (refreshed on resize) so frames never force a layout read
+        measureView() {
+            this._vw = this.els.container.clientWidth;
+            this._vh = this.els.container.clientHeight;
+        },
+
+        viewCenter() {
+            if (!this._vw) this.measureView();
+            return { x: this._vw / 2, y: this._vh / 2 };
+        },
+
+        zoomStep(dir) {
+            const c = this.viewCenter();
+            this.zoomBy(dir > 0 ? Math.SQRT2 : Math.SQRT1_2, c.x, c.y);
+        },
+
+        zoomTo100() {
+            const c = this.viewCenter();
+            this.zoomBy(1 / (this._zoomAnim ? this._zoomAnim.to : this.state.zoom), c.x, c.y);
+        },
+
+        // Glide to a view: the world point at screen center moves linearly while zoom eases in
+        // log space, so it reads as one camera move rather than a pan plus a zoom.
+        animateTo(zoom, pan, ms = 280) {
+            const c = this.viewCenter();
+            const z0 = this.state.zoom;
+            this._zoomAnim = null;
+            this._tween = {
+                ms, start: null,
+                z0, z1: zoom,
+                c0: { x: (c.x - this.state.pan.x) / z0, y: (c.y - this.state.pan.y) / z0 },
+                c1: { x: (c.x - pan.x) / zoom, y: (c.y - pan.y) / zoom }
+            };
+            this.requestRender();
+        },
+
+        requestRender() {
+            if (this._frame) return;
+            this._frame = requestAnimationFrame(t => this.frame(t));
+        },
+
+        // Kept for existing callers: schedules a frame instead of rendering synchronously
+        renderTransform() { this.requestRender(); },
+
+        frame(t) {
+            this._frame = null;
+            const dt = this._lastFrame ? Math.min(t - this._lastFrame, 48) : 16;
+            let more = false;
+
+            if (this._zoomAnim) {
+                const a = this._zoomAnim;
+                const lz = Math.log(this.state.zoom), lt = Math.log(a.to);
+                const done = Math.abs(lt - lz) < 0.002;
+                this.setZoomAround(done ? a.to : Math.exp(lz + (lt - lz) * (1 - Math.exp(-dt / 55))), a.sx, a.sy);
+                if (done) this._zoomAnim = null; else more = true;
+            }
+
+            if (this._tween) {
+                const tw = this._tween;
+                if (tw.start === null) tw.start = t;
+                const p = Math.min((t - tw.start) / tw.ms, 1);
+                const e = 1 - Math.pow(1 - p, 3);
+                const z = Math.exp(Math.log(tw.z0) + (Math.log(tw.z1) - Math.log(tw.z0)) * e);
+                const c = this.viewCenter();
+                this.state.zoom = z;
+                this.state.pan.x = c.x - (tw.c0.x + (tw.c1.x - tw.c0.x) * e) * z;
+                this.state.pan.y = c.y - (tw.c0.y + (tw.c1.y - tw.c0.y) * e) * z;
+                if (p >= 1) this._tween = null; else more = true;
+            }
+
+            this.applyCamera();
+            if (more) { this._lastFrame = t; this.requestRender(); }
+            else this._lastFrame = 0;
+        },
+
+        // Keep titles, buttons and hairlines a constant on-screen size. Title strips are
+        // counter-scaled and widened by the zoom so they still truncate at their frame's edge.
+        applyChromeScale(root) {
+            const z = this.state.zoom, s = 1 / z;
+            const scale = `scale(${s})`, width = `${z * 100}%`, px = `${s}px`;
+            const all = (sel) => {
+                const list = [...root.querySelectorAll(sel)];
+                if (root.matches(sel)) list.push(root);
+                return list;
+            };
+            for (const el of all('.node-header, .label-header')) { el.style.transform = scale; el.style.width = width; }
+            for (const el of all('.node-resizer')) el.style.transform = scale;
+            for (const el of all('.open-hint')) el.style.transform = `translate(-50%, -50%) ${scale}`;
+            for (const el of all('.type-label, .node-preview-wrapper')) el.style.setProperty('--px', px);
+        },
+
+        applyCamera() {
             const { x, y } = this.state.pan;
             const z = this.state.zoom;
-            this.els.plane.style.transform = `translate(${x}px, ${y}px) scale(${z})`;
-            document.getElementById('btn-zoom-reset').innerText = `${Math.round(z * 100)}%`;
+            // translate3d keeps the plane on its own GPU layer, so panning is a pure composite
+            this.els.plane.style.transform = `translate3d(${x}px, ${y}px, 0) scale(${z})`;
 
-            // Titles/buttons are sized in screen pixels via --px (one screen pixel in world units)
-            // and --ui (scale factor for chrome), so they never balloon or shrink with zoom.
-            const p = this.els.plane.style;
-            p.setProperty('--px', (1 / z) + 'px');
-            p.setProperty('--ui', 1 / z);
-            document.body.classList.toggle('zoom-far', z < 0.1);
-            document.body.classList.toggle('zoom-tiny', z < 0.2);
+            if (z !== this._appliedZoom) {
+                this._appliedZoom = z;
+                this.applyChromeScale(this.els.plane);
+                const label = `${Math.round(z * 100)}%`;
+                if (label !== this._zoomLabel) {
+                    this._zoomLabel = label;
+                    document.getElementById('btn-zoom-reset').textContent = label;
+                }
+                const far = z < 0.1, tiny = z < 0.2;
+                if (far !== this._far) { this._far = far; document.body.classList.toggle('zoom-far', far); }
+                if (tiny !== this._tiny) { this._tiny = tiny; document.body.classList.toggle('zoom-tiny', tiny); }
 
-            this.renderGrid();
+                // While zoom is changing, freeze the plane's raster (compositor scales it);
+                // re-raster crisp once it settles.
+                this.els.plane.classList.add('zooming');
+                clearTimeout(this._zoomSettle);
+                this._zoomSettle = setTimeout(() => this.els.plane.classList.remove('zooming'), 150);
+            }
+
+            this.drawGrid();
         },
 
         // FigJam-style dot grid: constant-size dots snapped to device pixels (so every dot renders
         // identically), spacing doubles when it gets dense, and the in-between dots crossfade out.
-        renderGrid() {
-            if (this._gridFrame) return;
-            this._gridFrame = requestAnimationFrame(() => {
-                this._gridFrame = null;
-                const cv = this.els.grid;
-                const dpr = window.devicePixelRatio || 1;
-                const w = this.els.container.clientWidth;
-                const h = this.els.container.clientHeight;
-                if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)) {
-                    cv.width = Math.round(w * dpr);
-                    cv.height = Math.round(h * dpr);
-                }
-                const ctx = cv.getContext('2d');
-                ctx.setTransform(1, 0, 0, 1, 0, 0);
-                ctx.clearRect(0, 0, cv.width, cv.height);
+        renderGrid() { this.requestRender(); },
 
-                const base = 24, minGap = 16;
-                let gap = base * this.state.zoom;
-                while (gap < minGap) gap *= 2;
-                // In-between dots fade from 0 (at minGap) to full (at 2x minGap)
-                const fade = Math.min(Math.max((gap - minGap) / minGap, 0), 1);
+        drawGrid() {
+            const cv = this.els.grid;
+            const dpr = window.devicePixelRatio || 1;
+            if (!this._vw) this.measureView();
+            const w = this._vw, h = this._vh;
+            if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)) {
+                cv.width = Math.round(w * dpr);
+                cv.height = Math.round(h * dpr);
+            }
+            const ctx = cv.getContext('2d');
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
+            ctx.clearRect(0, 0, cv.width, cv.height);
 
-                const dark = this.state.theme === 'dark';
-                const color = dark ? '255, 255, 255' : '0, 0, 0';
-                const alpha = dark ? 0.16 : 0.2;
-                const size = Math.max(2, Math.round(1.5 * dpr)); // dot diameter in device px
-                const half = size / 2;
+            const base = 24, minGap = 16;
+            let gap = base * this.state.zoom;
+            while (gap < minGap) gap *= 2;
+            // In-between dots fade from 0 (at minGap) to full (at 2x minGap)
+            const fade = Math.min(Math.max((gap - minGap) / minGap, 0), 1);
 
-                const ox = ((this.state.pan.x % gap) + gap) % gap;
-                const oy = ((this.state.pan.y % gap) + gap) % gap;
-                // World-grid index of the first visible column/row, so coarse dots stay put
-                const ix0 = Math.round((ox - this.state.pan.x) / gap);
-                const iy0 = Math.round((oy - this.state.pan.y) / gap);
-                const even = n => (((n % 2) + 2) % 2) === 0;
+            const dark = this.state.theme === 'dark';
+            const color = dark ? '255, 255, 255' : '0, 0, 0';
+            const alpha = dark ? 0.16 : 0.2;
+            const size = Math.max(2, Math.round(1.5 * dpr)); // dot diameter in device px
+            const half = size / 2;
 
-                const drawLevel = (coarse, a) => {
-                    if (a <= 0.01) return;
-                    ctx.fillStyle = `rgba(${color}, ${a})`;
-                    ctx.beginPath();
-                    for (let i = 0, x = ox; x < w + gap; x += gap, i++) {
-                        const colEven = even(ix0 + i);
-                        const px = Math.round(x * dpr);
-                        for (let j = 0, y = oy; y < h + gap; y += gap, j++) {
-                            if ((colEven && even(iy0 + j)) !== coarse) continue;
-                            const py = Math.round(y * dpr);
-                            ctx.moveTo(px + half, py);
-                            ctx.arc(px, py, half, 0, Math.PI * 2);
-                        }
+            const ox = ((this.state.pan.x % gap) + gap) % gap;
+            const oy = ((this.state.pan.y % gap) + gap) % gap;
+            // World-grid index of the first visible column/row, so coarse dots stay put
+            const ix0 = Math.round((ox - this.state.pan.x) / gap);
+            const iy0 = Math.round((oy - this.state.pan.y) / gap);
+            const even = n => (((n % 2) + 2) % 2) === 0;
+
+            const drawLevel = (coarse, a) => {
+                if (a <= 0.01) return;
+                ctx.fillStyle = `rgba(${color}, ${a})`;
+                ctx.beginPath();
+                for (let i = 0, x = ox; x < w + gap; x += gap, i++) {
+                    const colEven = even(ix0 + i);
+                    const px = Math.round(x * dpr);
+                    for (let j = 0, y = oy; y < h + gap; y += gap, j++) {
+                        if ((colEven && even(iy0 + j)) !== coarse) continue;
+                        const py = Math.round(y * dpr);
+                        ctx.moveTo(px + half, py);
+                        ctx.arc(px, py, half, 0, Math.PI * 2);
                     }
-                    ctx.fill();
-                };
-                drawLevel(true, alpha);
-                drawLevel(false, alpha * fade);
-            });
+                }
+                ctx.fill();
+            };
+            drawLevel(true, alpha);
+            drawLevel(false, alpha * fade);
         },
 
         centerView() {
-            const r = this.els.container.getBoundingClientRect();
-            this.state.pan = { x: r.width / 2, y: r.height / 2 };
-            this.renderTransform();
+            const c = this.viewCenter();
+            this.state.pan = { x: c.x, y: c.y };
+            this.requestRender();
         },
 
-        resetZoom() { this.state.zoom = 0.6; this.centerView(); },
+        resetZoom() { this.zoomTo100(); },
 
-        fitToContent() {
-            if (!this.state.nodes.length) return this.resetZoom();
+        // Frame a set of nodes (all of them by default); Shift+1 fits all, Shift+2 the selection
+        fitToContent(animate = true, nodes = this.state.nodes) {
+            const c = this.viewCenter();
+            if (!nodes.length) {
+                const pan = { x: c.x, y: c.y };
+                return animate ? this.animateTo(1, pan) : (this.state.zoom = 1, this.state.pan = pan, this.requestRender());
+            }
             let x1 = Infinity, y1 = Infinity, x2 = -Infinity, y2 = -Infinity;
-            this.state.nodes.forEach(n => {
-                x1 = Math.min(x1, n.x); y1 = Math.min(y1, n.y - (n.type === 'snippet' ? 60 : 0));
+            nodes.forEach(n => {
+                x1 = Math.min(x1, n.x); y1 = Math.min(y1, n.y - 40);
                 x2 = Math.max(x2, n.x + n.width); y2 = Math.max(y2, n.y + n.height);
             });
-            const r = this.els.container.getBoundingClientRect();
+            const w = c.x * 2, h = c.y * 2;
             const pad = 80, bottomBar = 90;
-            const z = Math.min(Math.max(Math.min((r.width - pad * 2) / (x2 - x1), (r.height - pad * 2 - bottomBar) / (y2 - y1)), 0.05), 1);
+            const z = this.clampZoom(Math.min(Math.min((w - pad * 2) / (x2 - x1), (h - pad * 2 - bottomBar) / (y2 - y1)), 1));
+            const pan = {
+                x: (w - (x2 - x1) * z) / 2 - x1 * z,
+                y: (h - bottomBar - (y2 - y1) * z) / 2 - y1 * z
+            };
+            if (animate) return this.animateTo(z, pan);
+            this._tween = this._zoomAnim = null;
             this.state.zoom = z;
-            this.state.pan.x = (r.width - (x2 - x1) * z) / 2 - x1 * z;
-            this.state.pan.y = (r.height - bottomBar - (y2 - y1) * z) / 2 - y1 * z;
-            this.renderTransform();
+            this.state.pan = pan;
+            this.requestRender();
+        },
+
+        fitToSelection() {
+            const sel = this.state.nodes.filter(n => this.state.selection.has(n.id));
+            if (sel.length) this.fitToContent(true, sel);
         },
 
         // --- Logic Helpers ---
@@ -1759,6 +1925,7 @@ a);requestAnimationFrame(function(){g(document.body)})})}var l=["material-icons"
             this.updateNodeGeometry(el, node);
             this.updateIframe(node.id);
             this.updateNodeGlobalScale(node.id);
+            this.applyChromeScale(el);
         },
 
         renderLabel(node) {
@@ -1834,6 +2001,7 @@ a);requestAnimationFrame(function(){g(document.body)})})}var l=["material-icons"
             el.append(header, resizer);
             this.els.plane.insertBefore(el, this.els.plane.firstChild);
             this.updateLabelDependents(node);
+            this.applyChromeScale(el);
         },
 
         // Read-only titles act as drag handles; double-click switches to editing
@@ -1999,9 +2167,9 @@ a);requestAnimationFrame(function(){g(document.body)})})}var l=["material-icons"
         },
 
         setupUIEvents() {
-            document.getElementById('btn-zoom-in').onclick = () => this.zoomFromCenter(1.25);
-            document.getElementById('btn-zoom-out').onclick = () => this.zoomFromCenter(0.8);
-            document.getElementById('btn-zoom-reset').onclick = () => this.resetZoom();
+            document.getElementById('btn-zoom-in').onclick = () => this.zoomStep(1);
+            document.getElementById('btn-zoom-out').onclick = () => this.zoomStep(-1);
+            document.getElementById('btn-zoom-reset').onclick = () => this.zoomTo100();
             document.getElementById('btn-zoom-fit').onclick = () => this.fitToContent();
 
             document.getElementById('btn-theme').onclick = () => {
@@ -2223,7 +2391,7 @@ a);requestAnimationFrame(function(){g(document.body)})})}var l=["material-icons"
                 this.recordState();
                 this.setDirty(true);
                 this.updateCanvasUI();
-                this.fitToContent();
+                this.fitToContent(false);
                 this.showToast(`Loaded ${data.name || path} · press save to keep it`, 3500);
             } catch (err) {
                 console.error('Import failed', err);
