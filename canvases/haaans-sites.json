@@ -3,7 +3,7 @@
  "name": "haaans.com",
  "nodes": [
   {
-   "id": "aa162239-a6f8-4436-a2b8-de50a4b61785",
+   "id": "1a288eaf-1603-4baf-b026-4002afcd0e80",
    "type": "label",
    "text": "Tools",
    "color": "#6b97c7",
@@ -13,7 +13,7 @@
    "height": 1640
   },
   {
-   "id": "637ab553-351b-4769-9a53-8d7eb245388d",
+   "id": "b6556391-8c66-4708-97ee-8146e23238d1",
    "type": "label",
    "text": "Financial",
    "color": "#6f9a7c",
@@ -23,7 +23,7 @@
    "height": 1124
   },
   {
-   "id": "b45f16eb-312b-4cac-b8c7-ac2791ab9864",
+   "id": "0cd3e4b4-f88d-4d86-9fd7-828c61ef726b",
    "type": "label",
    "text": "Games",
    "color": "#c7808f",
@@ -33,17 +33,27 @@
    "height": 1124
   },
   {
-   "id": "bcb9c46d-4a17-4e09-aacc-75dc91735206",
+   "id": "0fbb9998-b6b4-414c-a36e-c4afcd4f67cb",
+   "type": "label",
+   "text": "Sports",
+   "color": "#7c8798",
+   "x": 0,
+   "y": 6088,
+   "width": 4320,
+   "height": 1098
+  },
+  {
+   "id": "81cec5b6-09d6-41e8-b18d-d7e21d459fc9",
    "type": "label",
    "text": "Life",
    "color": "#b8975f",
    "x": 0,
-   "y": 6088,
+   "y": 7586,
    "width": 4320,
    "height": 1124
   },
   {
-   "id": "13a8c5c0-0c8d-40c5-ba65-538e49b74faf",
+   "id": "6488f241-69bd-491b-a3e3-6afcad286904",
    "type": "snippet",
    "version": "resume",
    "content": "<iframe src=\"https://haaans.com/resume/\" style=\"width:100%; height:100%; border:none; display:block;\"></iframe>",
@@ -56,7 +66,7 @@
    "height": 600
   },
   {
-   "id": "83de246a-a11e-430a-9f77-19045b94073c",
+   "id": "fb70e978-c38d-4419-bbea-a25ddb32a8e8",
    "type": "snippet",
    "version": "batchicons",
    "content": "<iframe src=\"https://haaans.com/batchicons/\" style=\"width:100%; height:100%; border:none; display:block;\"></iframe>",
@@ -69,7 +79,7 @@
    "height": 600
   },
   {
-   "id": "f275ef3d-f526-42c1-aed7-5d71f202b78e",
+   "id": "4d7afa39-35b8-4614-8f6e-2732c2ca56ab",
    "type": "snippet",
    "version": "loupe",
    "content": "<iframe src=\"https://haaans.com/loupe/\" style=\"width:100%; height:100%; border:none; display:block;\"></iframe>",
@@ -82,7 +92,7 @@
    "height": 600
   },
   {
-   "id": "b1fa1dc1-c7aa-490f-94d5-42c784ae1623",
+   "id": "f421272d-487f-4787-9942-326abc7c9584",
    "type": "snippet",
    "version": "md",
    "content": "<iframe src=\"https://haaans.com/md/\" style=\"width:100%; height:100%; border:none; display:block;\"></iframe>",
@@ -95,7 +105,7 @@
    "height": 600
   },
   {
-   "id": "fbbb00b2-dbe0-4c94-938f-d7623d83c34e",
+   "id": "caafa7ab-3246-4779-bda7-07791c5d6d4f",
    "type": "snippet",
    "version": "quadrant",
    "content": "<iframe src=\"https://haaans.com/quadrant/\" style=\"width:100%; height:100%; border:none; display:block;\"></iframe>",
@@ -108,7 +118,7 @@
    "height": 600
   },
   {
-   "id": "0c769165-7492-4eaa-be57-878ef384d0ae",
+   "id": "edb12701-763f-476b-9140-ed0a4b44463e",
    "type": "snippet",
    "version": "peeps",
    "content": "<iframe src=\"https://haaans.com/peeps/\" style=\"width:100%; height:100%; border:none; display:block;\"></iframe>",
@@ -121,7 +131,7 @@
    "height": 600
   },
   {
-   "id": "90066029-1c15-40d6-8191-4167cf1ae617",
+   "id": "103972de-8e17-4556-bc41-95768b97df59",
    "type": "snippet",
    "version": "folio",
    "content": "<iframe src=\"https://haaans.com/folio/?theme=bw&data=fake\" style=\"width:100%; height:100%; border:none; display:block;\"></iframe>",
@@ -134,7 +144,7 @@
    "height": 600
   },
   {
-   "id": "cd1a2f8e-36b3-4608-b726-83ae4448b065",
+   "id": "953a6040-a8b2-40c7-997b-f7e2ff5a16b6",
    "type": "snippet",
    "version": "firecalc",
    "content": "<iframe src=\"https://haaans.com/firecalc/\" style=\"width:100%; height:100%; border:none; display:block;\"></iframe>",
@@ -147,7 +157,7 @@
    "height": 600
   },
   {
-   "id": "e875f0ed-8527-4a7e-8a8e-372bb8d93814",
+   "id": "d3132033-a411-49de-b066-9ab8f29140af",
    "type": "snippet",
    "version": "calc",
    "content": "<iframe src=\"https://haaans.com/calc/\" style=\"width:100%; height:100%; border:none; display:block;\"></iframe>",
@@ -160,7 +170,7 @@
    "height": 844
   },
   {
-   "id": "680d47ed-6d5b-451f-9cf6-f88076c0846c",
+   "id": "7e68cc96-4995-4132-ab72-9fc438c20c9d",
    "type": "snippet",
    "version": "made",
    "content": "<iframe src=\"https://haaans.com/made/\" style=\"width:100%; height:100%; border:none; display:block;\"></iframe>",
@@ -173,7 +183,7 @@
    "height": 600
   },
   {
-   "id": "590cb62c-a90a-40cf-9b07-c7033809ad5e",
+   "id": "366fb69a-341e-4820-8ecb-31e2e5e147e9",
    "type": "snippet",
    "version": "score \u00b7 flip 7",
    "content": "<iframe src=\"https://haaans.com/score/#/flip7\" style=\"width:100%; height:100%; border:none; display:block;\"></iframe>",
@@ -186,7 +196,7 @@
    "height": 844
   },
   {
-   "id": "0c79db13-05f7-4b21-9480-4cbea010f524",
+   "id": "f053f50b-ae2d-4eb9-a322-db18cfda0da8",
    "type": "snippet",
    "version": "score \u00b7 13",
    "content": "<iframe src=\"https://haaans.com/score/#/13\" style=\"width:100%; height:100%; border:none; display:block;\"></iframe>",
@@ -199,7 +209,7 @@
    "height": 844
   },
   {
-   "id": "d9ceeea6-bcef-45c5-ac7f-e19747d3d0a1",
+   "id": "eb399840-6607-4d03-a11e-4f1a6ea4ddef",
    "type": "snippet",
    "version": "bingo",
    "content": "<iframe src=\"https://haaans.com/bingo/\" style=\"width:100%; height:100%; border:none; display:block;\"></iframe>",
@@ -212,7 +222,33 @@
    "height": 844
   },
   {
-   "id": "a234ae5c-546a-4662-9f32-0c4e842f8572",
+   "id": "f2a916fa-c412-4653-8ee7-73d1dbe6a005",
+   "type": "snippet",
+   "version": "scoreboard",
+   "content": "<img src=\"canvases/assets/scoreboard/scoreboard.webp\" alt=\"Scoreboard\" style=\"width:100%; height:100%; object-fit:cover; object-position:top; display:block; background:#ffffff;\">",
+   "url": "canvases/assets/scoreboard/scoreboard.webp",
+   "prompt": "",
+   "cssVars": {},
+   "x": 120,
+   "y": 6248,
+   "width": 960,
+   "height": 600
+  },
+  {
+   "id": "d27b8dff-1be4-4b08-87ee-7af0643a2539",
+   "type": "snippet",
+   "version": "odds \u00b7 kraken",
+   "content": "<img src=\"canvases/assets/odds/odds.webp\" alt=\"Kraken playoff odds\" style=\"width:100%; height:100%; object-fit:cover; object-position:top; display:block; background:#ffffff;\">",
+   "url": "canvases/assets/odds/odds.webp",
+   "prompt": "",
+   "cssVars": {},
+   "x": 1160,
+   "y": 6248,
+   "width": 960,
+   "height": 818
+  },
+  {
+   "id": "4b07fca3-36fa-494f-9486-1e162f68093e",
    "type": "snippet",
    "version": "hanstaxi",
    "content": "<iframe src=\"https://haaans.com/hanstaxi/\" style=\"width:100%; height:100%; border:none; display:block;\"></iframe>",
@@ -220,12 +256,12 @@
    "prompt": "",
    "cssVars": {},
    "x": 120,
-   "y": 6248,
+   "y": 7746,
    "width": 390,
    "height": 844
   },
   {
-   "id": "238deecc-eed8-4421-a711-564fc3a07543",
+   "id": "b428c337-792e-4458-be5f-880cee30a2b4",
    "type": "snippet",
    "version": "fishreports",
    "content": "<iframe src=\"https://haaans.com/fishreports/\" style=\"width:100%; height:100%; border:none; display:block;\"></iframe>",
@@ -233,12 +269,12 @@
    "prompt": "",
    "cssVars": {},
    "x": 590,
-   "y": 6248,
+   "y": 7746,
    "width": 960,
    "height": 600
   },
   {
-   "id": "e57cbc12-6281-4bdb-877c-f4c848e37981",
+   "id": "ac7a7abf-fa18-428e-9f82-302d7b5868ea",
    "type": "snippet",
    "version": "japanclan",
    "content": "<iframe src=\"https://haaans.com/japanclan/\" style=\"width:100%; height:100%; border:none; display:block;\"></iframe>",
@@ -246,20 +282,20 @@
    "prompt": "",
    "cssVars": {},
    "x": 1630,
-   "y": 6248,
+   "y": 7746,
    "width": 390,
    "height": 844
   },
   {
-   "id": "31c92c5b-e1f2-4294-b4c6-3cdb9d8a832c",
+   "id": "b37872ab-9238-45e7-81e1-42dfa8656bfe",
    "type": "snippet",
    "version": "trmnl \u00b7 cntrl",
-   "content": "<img src=\"canvases/assets/trmnl/cntrl.webp\" alt=\"TRMNL cntrl app\"\n  style=\"width:100%; height:100%; object-fit:cover; object-position:top; display:block; background:#f3f2ef;\">",
+   "content": "<img src=\"canvases/assets/trmnl/cntrl.webp\" alt=\"TRMNL cntrl app\" style=\"width:100%; height:100%; object-fit:cover; object-position:top; display:block; background:#f3f2ef;\">",
    "url": "https://haaans.com/trmnl/",
    "prompt": "",
    "cssVars": {},
    "x": 2100,
-   "y": 6248,
+   "y": 7746,
    "width": 960,
    "height": 600
   }
