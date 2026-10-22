@@ -365,7 +365,7 @@ a);requestAnimationFrame(function(){g(document.body)})})}var l=["material-icons"
         bottom: 100%;
         left: 0;
         width: 100%;
-        padding: 0 0 8px 2px;
+        padding: 0 0 6px 2px;
         display: flex;
         align-items: flex-end;
         cursor: default;
@@ -1408,19 +1408,27 @@ a);requestAnimationFrame(function(){g(document.body)})})}var l=["material-icons"
         // Keep titles, buttons and hairlines a constant on-screen size. Title strips are
         // counter-scaled and widened by the zoom so they still truncate at their frame's edge.
         applyChromeScale(root) {
-            const z = this.state.zoom, s = 1 / z;
-            const scale = `scale(${s})`, width = `${z * 100}%`, px = `${s}px`;
+            const z = this.state.zoom, s = 1 / z, f = this.titleScale();
+            const scale = `scale(${s})`, px = `${s}px`;
+            // Title strips get the gentle zoomed-out shrink too; widen them to compensate
+            const headerScale = `scale(${s * f})`, headerWidth = `${(z / f) * 100}%`;
             const all = (sel) => {
                 const list = [...root.querySelectorAll(sel)];
                 if (root.matches(sel)) list.push(root);
                 return list;
             };
-            for (const el of all('.node-header, .label-header')) { el.style.transform = scale; el.style.width = width; }
+            for (const el of all('.node-header, .label-header')) { el.style.transform = headerScale; el.style.width = headerWidth; }
             for (const el of all('.node-resizer')) el.style.transform = scale;
             for (const el of all('.open-hint')) el.style.transform = `translate(-50%, -50%) ${scale}`;
             for (const el of all('.type-label, .node-preview-wrapper')) el.style.setProperty('--px', px);
 
             if (root === this.els.plane) this.state.nodes.forEach(n => this.fitChrome(document.getElementById(`node-${n.id}`), n));
+        },
+
+        // Titles hold a fixed screen size, but far out (below 20%) they ease down to 75% so
+        // they stay inside the gaps between frames instead of crowding the frame above.
+        titleScale() {
+            return Math.min(1, Math.max(0.75, this.state.zoom / 0.2));
         },
 
         measureText(text, font) {
@@ -1439,7 +1447,7 @@ a);requestAnimationFrame(function(){g(document.body)})})}var l=["material-icons"
                     `500 ${isLabel ? 14 : 12}px ui-sans-serif, system-ui, -apple-system, sans-serif`);
             }
             const icons = isLabel ? 196 : 124; // full palette + delete / four action buttons, incl. gaps
-            const collapsed = node.width * this.state.zoom < el._titleW + icons;
+            const collapsed = node.width * this.state.zoom / this.titleScale() < el._titleW + icons;
             if (collapsed !== el._collapsed) {
                 el._collapsed = collapsed;
                 el.classList.toggle('chrome-collapsed', collapsed);
