@@ -143,7 +143,6 @@ a);requestAnimationFrame(function(){g(document.body)})})}var l=["material-icons"
 
     /* Zoomed far out: card titles/actions would just be noise */
     body.zoom-far .node-header { opacity: 0; pointer-events: none; }
-    body.zoom-tiny .node-actions { display: none; }
 
     .node-header {
         position: absolute;
@@ -183,7 +182,46 @@ a);requestAnimationFrame(function(){g(document.body)})})}var l=["material-icons"
         opacity: 0;
         transition: opacity 0.15s;
     }
-    .canvas-node:hover .node-actions { opacity: 1; }
+    .canvas-node:hover .node-actions,
+    .node-actions.open { opacity: 1; }
+    .actions-list { display: flex; gap: 4px; }
+
+    /* On hover the title truncates before the icons instead of running under them */
+    .canvas-node:hover .node-title { max-width: calc(100% - 124px); }
+    .canvas-node.chrome-collapsed:hover .node-title { max-width: calc(100% - 34px); }
+
+    /*
+     * When the frame is too narrow on screen for title + icons, the icons fold into a
+     * single ⋯ button that opens them as a small menu inside the frame.
+     */
+    .more-btn { display: none !important; }
+    .chrome-collapsed .more-btn { display: flex !important; }
+    .chrome-collapsed .node-actions:not(.open) .actions-list { display: none; }
+    .chrome-collapsed .node-actions.open .actions-list,
+    .chrome-collapsed .label-tools.open .label-controls {
+        position: absolute;
+        top: calc(100% + 4px);
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+        padding: 4px;
+        border-radius: 10px;
+        background: white;
+        border: 1px solid rgba(0,0,0,0.08);
+        box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+        z-index: 5;
+    }
+    .dark .chrome-collapsed .node-actions.open .actions-list,
+    .dark .chrome-collapsed .label-tools.open .label-controls {
+        background: #27272a;
+        border-color: rgba(255,255,255,0.08);
+    }
+    .chrome-collapsed .node-actions.open .actions-list { right: 0; }
+    .chrome-collapsed .label-tools.open .label-controls { left: 0; margin: 0; opacity: 1; }
+    .chrome-collapsed .label-tools.open .label-palette { flex-direction: column; border: 0; box-shadow: none; padding: 2px; background: none; }
+    .chrome-collapsed .label-tools:not(.open) .label-controls { display: none; }
+    .chrome-collapsed .node-actions.open .action-btn,
+    .chrome-collapsed .label-tools.open .action-btn { box-shadow: none; }
 
     /* Action Buttons (screen px; their title strip is counter-scaled) */
     .action-btn {
@@ -355,13 +393,20 @@ a);requestAnimationFrame(function(){g(document.body)})})}var l=["material-icons"
     /* Controls follow the title (not the far edge) so they're on screen even on wide labels */
     .label-controls {
         flex: none;
+        display: flex; gap: 6px; align-items: center;
+    }
+    .label-tools {
+        position: relative;
+        flex: none;
+        display: flex;
+        align-items: flex-end;
         margin-left: 8px;
         margin-bottom: -2px;
-        display: flex; gap: 6px; align-items: center;
         opacity: 0;
         transition: opacity 0.15s;
     }
-    .type-label:hover > .label-header .label-controls { opacity: 1; }
+    .type-label:hover > .label-header .label-tools,
+    .label-tools.open { opacity: 1; }
 
     .label-palette {
         display: flex; gap: 5px; align-items: center;
@@ -1172,7 +1217,7 @@ a);requestAnimationFrame(function(){g(document.body)})})}var l=["material-icons"
                         node.width = Math.max(300, node.width + (dx / this.state.zoom));
                         node.height = Math.max(150, node.height + (dy / this.state.zoom));
                         const el = document.getElementById(`node-${node.id}`);
-                        if (el) this.updateNodeGeometry(el, node);
+                        if (el) { this.updateNodeGeometry(el, node); this.fitChrome(el, node); }
                     }
                 }
                 this.state.lastMouse = { x: e.clientX, y: e.clientY };
@@ -1374,6 +1419,42 @@ a);requestAnimationFrame(function(){g(document.body)})})}var l=["material-icons"
             for (const el of all('.node-resizer')) el.style.transform = scale;
             for (const el of all('.open-hint')) el.style.transform = `translate(-50%, -50%) ${scale}`;
             for (const el of all('.type-label, .node-preview-wrapper')) el.style.setProperty('--px', px);
+
+            if (root === this.els.plane) this.state.nodes.forEach(n => this.fitChrome(document.getElementById(`node-${n.id}`), n));
+        },
+
+        measureText(text, font) {
+            const ctx = this._measureCtx || (this._measureCtx = document.createElement('canvas').getContext('2d'));
+            ctx.font = font;
+            return ctx.measureText(text).width;
+        },
+
+        // Fold a frame's icons into ⋯ when title + icons don't fit its on-screen width.
+        // Title widths are measured once (canvas measureText), so this never reads layout.
+        fitChrome(el, node) {
+            if (!el) return;
+            const isLabel = node.type === 'label';
+            if (el._titleW == null) {
+                el._titleW = this.measureText(isLabel ? node.text : node.version,
+                    `500 ${isLabel ? 14 : 12}px ui-sans-serif, system-ui, -apple-system, sans-serif`);
+            }
+            const icons = isLabel ? 196 : 124; // full palette + delete / four action buttons, incl. gaps
+            const collapsed = node.width * this.state.zoom < el._titleW + icons;
+            if (collapsed !== el._collapsed) {
+                el._collapsed = collapsed;
+                el.classList.toggle('chrome-collapsed', collapsed);
+            }
+        },
+
+        // ⋯ toggles the folded icons; picking one or leaving the frame closes them
+        bindMoreMenu(el, container) {
+            const more = container.querySelector('.more-btn');
+            more.onmousedown = e => e.stopPropagation();
+            more.onclick = e => { e.stopPropagation(); container.classList.toggle('open'); };
+            container.addEventListener('click', e => {
+                if (e.target.closest('.action-btn') && !e.target.closest('.more-btn')) container.classList.remove('open');
+            });
+            el.addEventListener('mouseleave', () => container.classList.remove('open'));
         },
 
         applyCamera() {
@@ -1390,9 +1471,8 @@ a);requestAnimationFrame(function(){g(document.body)})})}var l=["material-icons"
                     this._zoomLabel = label;
                     document.getElementById('btn-zoom-reset').textContent = label;
                 }
-                const far = z < 0.1, tiny = z < 0.2;
+                const far = z < 0.1;
                 if (far !== this._far) { this._far = far; document.body.classList.toggle('zoom-far', far); }
-                if (tiny !== this._tiny) { this._tiny = tiny; document.body.classList.toggle('zoom-tiny', tiny); }
 
                 // While zoom is changing, freeze the plane's raster (compositor scales it);
                 // re-raster crisp once it settles.
@@ -1777,15 +1857,17 @@ a);requestAnimationFrame(function(){g(document.body)})})}var l=["material-icons"
             header.innerHTML = `
                 <input class="node-title select-none bg-transparent border-none outline-none truncate" value="${node.version}" spellcheck="false" readonly title="Double-click to rename">
                 <div class="node-actions">
-                    <button class="action-btn node-open" title="Open site (⌘+click)"><span class="material-symbols-outlined">open_in_new</span></button>
-                    <button class="action-btn" id="btn-settings-${node.id}" title="Settings"><span class="material-symbols-outlined">settings</span></button>
-                    <button class="action-btn node-copy" title="Copy Code"><span class="material-symbols-outlined">content_copy</span></button>
-                    <button class="action-btn node-full" title="Fullscreen"><span class="material-symbols-outlined">fullscreen</span></button>
-                    <button class="action-btn delete node-del" title="Delete"><span class="material-symbols-outlined">delete</span></button>
+                    <button class="action-btn more-btn" title="More"><span class="material-symbols-outlined">more_horiz</span></button>
+                    <div class="actions-list">
+                        <button class="action-btn" id="btn-settings-${node.id}" title="Settings"><span class="material-symbols-outlined">settings</span></button>
+                        <button class="action-btn node-copy" title="Copy Code"><span class="material-symbols-outlined">content_copy</span></button>
+                        <button class="action-btn node-full" title="Fullscreen"><span class="material-symbols-outlined">fullscreen</span></button>
+                        <button class="action-btn delete node-del" title="Delete"><span class="material-symbols-outlined">delete</span></button>
+                    </div>
                 </div>
             `;
             const titleInput = header.querySelector('.node-title');
-            titleInput.oninput = e => { node.version = e.target.value; };
+            titleInput.oninput = e => { node.version = e.target.value; el._titleW = null; this.fitChrome(el, node); };
             this.makeRenamable(titleInput, () => this.recordState());
 
             // Title drags the node; double-click renames
@@ -1794,7 +1876,7 @@ a);requestAnimationFrame(function(){g(document.body)})})}var l=["material-icons"
                 if (!e.target.closest('.node-actions')) this.startDrag(e, node.id);
             });
 
-            header.querySelector('.node-open').onclick = e => { e.stopPropagation(); this.openSite(node); };
+            this.bindMoreMenu(el, header.querySelector('.node-actions'));
             header.querySelector('.node-del').onclick = e => { e.stopPropagation(); this.deleteNode(node.id); };
             header.querySelector('.node-full').onclick = e => { e.stopPropagation(); this.openModal(node); };
             header.querySelector('.node-copy').onclick = e => { e.stopPropagation(); this.copyNodeCode(node); };
@@ -1926,6 +2008,7 @@ a);requestAnimationFrame(function(){g(document.body)})})}var l=["material-icons"
             this.updateIframe(node.id);
             this.updateNodeGlobalScale(node.id);
             this.applyChromeScale(el);
+            this.fitChrome(el, node);
         },
 
         renderLabel(node) {
@@ -1943,6 +2026,8 @@ a);requestAnimationFrame(function(){g(document.body)})})}var l=["material-icons"
             ).join('');
             header.innerHTML = `
                 <input class="label-title" value="${node.text}" readonly spellcheck="false" title="Double-click to rename">
+                <div class="label-tools">
+                <button class="action-btn more-btn" title="More"><span class="material-symbols-outlined">more_horiz</span></button>
                 <div class="label-controls">
                     <div class="label-palette">
                         ${dots}
@@ -1952,13 +2037,15 @@ a);requestAnimationFrame(function(){g(document.body)})})}var l=["material-icons"
                     </div>
                     <button class="action-btn delete label-del" title="Delete label"><span class="material-symbols-outlined">delete</span></button>
                 </div>
+                </div>
             `;
 
             const titleInput = header.querySelector('.label-title');
             // Size the input to its text so the controls sit right after the title
             const fitTitle = () => { titleInput.size = titleInput.value.length + 2; }; // +2: size is in average-char units
             fitTitle();
-            titleInput.oninput = e => { node.text = e.target.value; fitTitle(); };
+            titleInput.oninput = e => { node.text = e.target.value; fitTitle(); el._titleW = null; this.fitChrome(el, node); };
+            this.bindMoreMenu(el, header.querySelector('.label-tools'));
             this.makeRenamable(titleInput, () => this.recordState());
 
             header.querySelectorAll('.palette-dot').forEach(dot => {
@@ -1987,7 +2074,7 @@ a);requestAnimationFrame(function(){g(document.body)})})}var l=["material-icons"
             // Empty label body behaves like the canvas: drag to marquee-select.
             header.addEventListener('mousedown', e => {
                 if (!titleInput.readOnly && e.target === titleInput) { e.stopPropagation(); return; }
-                if (e.target.closest('.label-controls')) return;
+                if (e.target.closest('.label-tools')) return;
                 this.startDrag(e, node.id);
             });
             el.addEventListener('mousedown', e => {
@@ -2002,6 +2089,7 @@ a);requestAnimationFrame(function(){g(document.body)})})}var l=["material-icons"
             this.els.plane.insertBefore(el, this.els.plane.firstChild);
             this.updateLabelDependents(node);
             this.applyChromeScale(el);
+            this.fitChrome(el, node);
         },
 
         // Read-only titles act as drag handles; double-click switches to editing
@@ -2382,7 +2470,7 @@ a);requestAnimationFrame(function(){g(document.body)})})}var l=["material-icons"
             try {
                 const url = new URL(path, location.href);
                 if (url.origin !== location.origin) throw new Error('Cross-origin import blocked');
-                const data = await (await fetch(url)).json();
+                const data = await (await fetch(url, { cache: 'no-cache' })).json(); // always pick up an updated canvas file
                 if (!Array.isArray(data.nodes)) throw new Error('No nodes');
                 this.state.activeCanvasId = null;
                 this.state.importName = data.name || null;
