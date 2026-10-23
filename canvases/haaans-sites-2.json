@@ -73,8 +73,7 @@
    "x": -16.069179954575972,
    "y": 0,
    "width": 960,
-   "height": 600,
-   "readme": "https://github.com/HansEngebretsen/resume#readme"
+   "height": 600
   },
   {
    "id": "6d45358f-6ad1-49ba-a350-7405a2c6e32f",
@@ -102,7 +101,7 @@
    "y": 1160,
    "width": 960,
    "height": 600,
-   "readme": "https://github.com/HansEngebretsen/loupe#loupe-"
+   "readme": "https://github.com/HansEngebretsen/loupe#loupe"
   },
   {
    "id": "4cba25f6-3a03-4ee4-936f-92252bd26334",
@@ -214,7 +213,7 @@
    "y": 4724,
    "width": 390,
    "height": 844,
-   "readme": "https://github.com/HansEngebretsen/score#-flip-7-tracker"
+   "readme": "https://github.com/HansEngebretsen/score#score"
   },
   {
    "id": "fcdf3505-a782-49b5-903c-6d1507c99c75",
@@ -228,7 +227,7 @@
    "y": 4724,
    "width": 390,
    "height": 844,
-   "readme": "https://github.com/HansEngebretsen/score#-flip-7-tracker"
+   "readme": "https://github.com/HansEngebretsen/score#score"
   },
   {
    "id": "afb80adb-416e-4776-894c-ba4266f40267",

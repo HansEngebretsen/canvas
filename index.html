@@ -281,30 +281,17 @@ a);requestAnimationFrame(function(){g(document.body)})})}var l=["material-icons"
     body.alt-down #canvas-container.zoom-tool,
     body.alt-down #canvas-container.zoom-tool * { cursor: zoom-out !important; }
 
-    /* Hold Alt: cards that know their repo show a link to its README */
-    .readme-link {
-        position: absolute;
-        top: 10px; left: 10px;
-        transform-origin: top left;
-        display: none;
-        align-items: center; gap: 6px;
-        padding: 6px 12px;
-        border-radius: 999px;
-        background: rgba(24, 24, 27, 0.9);
-        color: white;
-        font: 500 13px/1 ui-sans-serif, system-ui, sans-serif;
-        white-space: nowrap;
-        text-decoration: none;
-        z-index: 20;
-        cursor: pointer !important;
-    }
-    .readme-link:hover { background: #3b82f6; }
-    .readme-link .material-symbols-outlined { font-size: 16px; }
-    body.alt-down .readme-link { display: flex; }
-    .open-hint {
+    /* Hold Cmd/Ctrl and hover a card: "Open site", plus "README" below it when the card knows its repo */
+    .cmd-hints {
         position: absolute;
         top: 50%; left: 50%;
         transform: translate(-50%, -50%);
+        display: flex; flex-direction: column; align-items: center; gap: 6px;
+        opacity: 0;
+        transition: opacity 0.15s;
+        pointer-events: none;
+    }
+    .open-hint, .readme-link {
         display: flex; align-items: center; gap: 6px;
         padding: 6px 12px;
         border-radius: 999px;
@@ -312,12 +299,12 @@ a);requestAnimationFrame(function(){g(document.body)})})}var l=["material-icons"
         color: white;
         font: 500 13px/1 ui-sans-serif, system-ui, sans-serif;
         white-space: nowrap;
-        opacity: 0;
-        transition: opacity 0.15s;
-        pointer-events: none;
+        text-decoration: none;
     }
-    .open-hint .material-symbols-outlined { font-size: 16px; }
-    body.cmd-down .snippet-overlay:hover .open-hint { opacity: 1; }
+    .open-hint .material-symbols-outlined, .readme-link .material-symbols-outlined { font-size: 16px; }
+    .readme-link:hover { background: #3b82f6; }
+    body.cmd-down .snippet-overlay:hover .cmd-hints { opacity: 1; }
+    body.cmd-down .snippet-overlay:hover .readme-link { pointer-events: auto; cursor: pointer !important; }
 
     /* --- Variables (Collapsible Settings) --- */
     .node-vars {
@@ -1012,7 +999,7 @@ a);requestAnimationFrame(function(){g(document.body)})})}var l=["material-icons"
 
         handleKeydown(e) {
             if (e.key === 'Meta' || e.key === 'Control') document.body.classList.add('cmd-down');
-            if (e.key === 'Alt') { document.body.classList.add('alt-down'); e.preventDefault(); }
+            if (e.key === 'Alt') document.body.classList.add('alt-down');
             if (e.code === 'KeyZ' && !e.metaKey && !e.ctrlKey && !this.isTyping()) {
                 this.state.isZPressed = true;
                 this.els.container.classList.add('zoom-tool');
@@ -1490,8 +1477,7 @@ a);requestAnimationFrame(function(){g(document.body)})})}var l=["material-icons"
             };
             for (const el of all('.node-header, .label-header')) { el.style.transform = headerScale; el.style.width = headerWidth; }
             for (const el of all('.node-resizer')) el.style.transform = scale;
-            for (const el of all('.open-hint')) el.style.transform = `translate(-50%, -50%) ${scale}`;
-            for (const el of all('.readme-link')) el.style.transform = scale;
+            for (const el of all('.cmd-hints')) el.style.transform = `translate(-50%, -50%) ${scale}`;
             for (const el of all('.type-label, .node-preview-wrapper')) el.style.setProperty('--px', px);
 
             if (root === this.els.plane) this.state.nodes.forEach(n => this.fitChrome(document.getElementById(`node-${n.id}`), n));
@@ -1982,7 +1968,7 @@ a);requestAnimationFrame(function(){g(document.body)})})}var l=["material-icons"
             
             const overlay = document.createElement('div');
             overlay.className = 'snippet-overlay absolute inset-0 z-10';
-            overlay.innerHTML = '<div class="open-hint"><span class="material-symbols-outlined">open_in_new</span>Open site</div>';
+            overlay.innerHTML = '<div class="cmd-hints"><div class="open-hint"><span class="material-symbols-outlined">open_in_new</span>Open site</div></div>';
             overlay.addEventListener('mousedown', e => {
                 if (e.metaKey || e.ctrlKey) { e.preventDefault(); e.stopPropagation(); return; }
                 this.startDrag(e, node.id);
@@ -1996,13 +1982,12 @@ a);requestAnimationFrame(function(){g(document.body)})})}var l=["material-icons"
                 link.href = node.readme;
                 link.innerHTML = '<span class="material-symbols-outlined">menu_book</span>README';
                 link.addEventListener('mousedown', e => e.stopPropagation());
-                // Opened via script: Alt+click on a plain link would download it
                 link.addEventListener('click', e => {
                     e.preventDefault();
                     e.stopPropagation();
                     window.open(node.readme, '_blank', 'noopener');
                 });
-                overlay.appendChild(link);
+                overlay.querySelector('.cmd-hints').appendChild(link);
             }
 
             scaleWrap.appendChild(iframe);
