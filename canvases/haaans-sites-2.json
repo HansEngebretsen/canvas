@@ -73,7 +73,8 @@
    "x": -16.069179954575972,
    "y": 0,
    "width": 960,
-   "height": 600
+   "height": 600,
+   "readme": "https://github.com/HansEngebretsen/resume#readme"
   },
   {
    "id": "6d45358f-6ad1-49ba-a350-7405a2c6e32f",
@@ -86,7 +87,8 @@
    "x": 120,
    "y": 1160,
    "width": 960,
-   "height": 600
+   "height": 600,
+   "readme": "https://github.com/HansEngebretsen/batchicons#batchicons"
   },
   {
    "id": "502efd95-39c2-4796-81a4-a33ffdc3f8fd",
@@ -99,7 +101,8 @@
    "x": 1160,
    "y": 1160,
    "width": 960,
-   "height": 600
+   "height": 600,
+   "readme": "https://github.com/HansEngebretsen/loupe#loupe-"
   },
   {
    "id": "4cba25f6-3a03-4ee4-936f-92252bd26334",
@@ -112,7 +115,8 @@
    "x": 2200,
    "y": 1160,
    "width": 960,
-   "height": 600
+   "height": 600,
+   "readme": "https://github.com/HansEngebretsen/md#md"
   },
   {
    "id": "b80ef339-ff89-464a-9476-1f731292e7e2",
@@ -125,7 +129,8 @@
    "x": 3240,
    "y": 1160,
    "width": 960,
-   "height": 600
+   "height": 600,
+   "readme": "https://github.com/HansEngebretsen/quadrant#quadrant"
   },
   {
    "id": "99c69d58-524d-437f-a761-feebd72da46d",
@@ -138,7 +143,8 @@
    "x": 120,
    "y": 1920,
    "width": 960,
-   "height": 600
+   "height": 600,
+   "readme": "https://github.com/HansEngebretsen/peeps#peeps"
   },
   {
    "id": "f6ca2eaa-ec50-4c6b-b609-9f95e4d6ba34",
@@ -151,7 +157,8 @@
    "x": 120,
    "y": 3200,
    "width": 960,
-   "height": 600
+   "height": 600,
+   "readme": "https://github.com/HansEngebretsen/folio#folio"
   },
   {
    "id": "a37f4ba7-5147-46aa-a873-01e3bd100764",
@@ -164,7 +171,8 @@
    "x": 1160,
    "y": 3200,
    "width": 1096.0691799545764,
-   "height": 594.330450835226
+   "height": 594.330450835226,
+   "readme": "https://github.com/HansEngebretsen/firecalc#firecalc"
   },
   {
    "id": "f8089880-1cb1-4df2-8c8f-be4dfa34dc0b",
@@ -177,7 +185,8 @@
    "x": 2353.077827448896,
    "y": 3205.669549164774,
    "width": 390,
-   "height": 844
+   "height": 844,
+   "readme": "https://github.com/HansEngebretsen/calc#calc"
   },
   {
    "id": "a7dd3262-e068-46b3-afdc-df6ffa462044",
@@ -190,7 +199,8 @@
    "x": 2823.077827448898,
    "y": 3200,
    "width": 960,
-   "height": 600
+   "height": 600,
+   "readme": "https://github.com/HansEngebretsen/made#made"
   },
   {
    "id": "1c7627e2-7e3a-4d88-bd04-47ea3141fe0a",
@@ -203,7 +213,8 @@
    "x": 120,
    "y": 4724,
    "width": 390,
-   "height": 844
+   "height": 844,
+   "readme": "https://github.com/HansEngebretsen/score#-flip-7-tracker"
   },
   {
    "id": "fcdf3505-a782-49b5-903c-6d1507c99c75",
@@ -216,7 +227,8 @@
    "x": 590,
    "y": 4724,
    "width": 390,
-   "height": 844
+   "height": 844,
+   "readme": "https://github.com/HansEngebretsen/score#-flip-7-tracker"
   },
   {
    "id": "afb80adb-416e-4776-894c-ba4266f40267",
@@ -229,7 +241,8 @@
    "x": 1060,
    "y": 4724,
    "width": 390,
-   "height": 844
+   "height": 844,
+   "readme": "https://github.com/HansEngebretsen/bingo#bingo"
   },
   {
    "id": "1cbcf387-bf02-4e18-a220-3f5cea699ebd",
@@ -268,7 +281,8 @@
    "x": 2200,
    "y": 6248,
    "width": 1160.9394675397455,
-   "height": 988.660901670452
+   "height": 988.660901670452,
+   "readme": "https://github.com/HansEngebretsen/krakentix#krakentix"
   },
   {
    "id": "030590f9-b74a-4c33-aefe-a1d8faeef007",
@@ -281,7 +295,8 @@
    "x": 120,
    "y": 7928,
    "width": 390,
-   "height": 844
+   "height": 844,
+   "readme": "https://github.com/HansEngebretsen/hanstaxi#hanstaxi"
   },
   {
    "id": "0ceeff51-6272-4907-8940-f1e30c9465ec",
@@ -294,7 +309,8 @@
    "x": 590,
    "y": 7928,
    "width": 960,
-   "height": 600
+   "height": 600,
+   "readme": "https://github.com/HansEngebretsen/fishreports#fishreports"
   },
   {
    "id": "50b9b2c3-57c6-41d2-a977-77c0cf727b0a",
@@ -307,7 +323,8 @@
    "x": 1630,
    "y": 7928,
    "width": 390,
-   "height": 844
+   "height": 844,
+   "readme": "https://github.com/HansEngebretsen/japanclan#japanclan"
   },
   {
    "id": "c3b8155a-3568-4d88-9cd9-f2a6cefe9ebf",
