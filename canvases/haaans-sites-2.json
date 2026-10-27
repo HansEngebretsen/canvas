@@ -9,8 +9,8 @@
    "color": "#9585c4",
    "x": -2.100542076456108,
    "y": 9278.939373757295,
-   "width": 4115.120482159881,
-   "height": 1295.7887680342917
+   "width": 4374.63904850029,
+   "height": 1248.1220925840125
   },
   {
    "id": "983fbb27-276e-4130-894e-f0ddcb85b035",
@@ -357,8 +357,8 @@
    "content": "<iframe src=\"https://es-d-51869444620261025-9111ef93ecb5a118120d76bf2038072b.codepen.dev/\" style=\"width:100%; height:100%; border:none; display:block;\"></iframe>",
    "prompt": "",
    "cssVars": {},
-   "x": 1359.6353612408707,
-   "y": 9506.587272397217,
+   "x": 2254.709600251678,
+   "y": 9495.994677852705,
    "width": 900,
    "height": 600
   },
@@ -369,8 +369,8 @@
    "content": "<iframe src=\"https://es-d-51869444620261025-d89b273a97d2463ec15917e399cb16fc.codepen.dev/\" style=\"width:100%; height:100%; border:none; display:block;\"></iframe>",
    "prompt": "",
    "cssVars": {},
-   "x": 2309.8908630094793,
-   "y": 9504.963472291853,
+   "x": 3252.6317774705676,
+   "y": 9494.370877747348,
    "width": 900,
    "height": 600
   },
@@ -383,6 +383,18 @@
    "cssVars": {},
    "x": 1053.9504037012189,
    "y": -6.996037712393989,
+   "width": 900,
+   "height": 600
+  },
+  {
+   "id": "8be01841-9464-4e6a-8884-11f203ba7970",
+   "type": "snippet",
+   "version": "Agentic builder",
+   "content": "<iframe src=\"https://es-d-59722827720261029-23e789706b75446577d6f08cab3e392c.codepen.dev/\" style=\"width:100%; height:100%; border:none; display:block;\"></iframe>",
+   "prompt": "",
+   "cssVars": {},
+   "x": 1259.756343798524,
+   "y": 9485.765467224353,
    "width": 900,
    "height": 600
   }
