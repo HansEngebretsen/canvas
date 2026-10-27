@@ -101,6 +101,87 @@ a);requestAnimationFrame(function(){g(document.body)})})}var l=["material-icons"
     #canvas-container.grabbing,
     #canvas-container.grabbing * { cursor: grabbing !important; }
 
+    /* --- Toolbar & zoom bar: one size system (32px controls, 18px icons, 12px/500 text) --- */
+    .toolbar, .zoombar {
+        position: fixed;
+        bottom: 20px;
+        z-index: 100;
+        display: flex;
+        align-items: center;
+        gap: 2px;
+        padding: 4px;
+        border-radius: 14px;
+        background: rgba(255, 255, 255, 0.92);
+        border: 1px solid rgba(0, 0, 0, 0.08);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        font: 500 12px/1 ui-sans-serif, system-ui, -apple-system, sans-serif;
+        color: #3f3f46;
+    }
+    .toolbar { left: 50%; transform: translateX(-50%); }
+    .zoombar { right: 20px; }
+    .dark .toolbar, .dark .zoombar {
+        background: rgba(24, 24, 27, 0.92);
+        border-color: rgba(255, 255, 255, 0.08);
+        color: #d4d4d8;
+    }
+    .toolbar .material-symbols-outlined, .zoombar .material-symbols-outlined { font-size: 18px; line-height: 1; }
+    .tb-btn, .tb-pill, .tb-title {
+        height: 32px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 9px;
+        color: inherit;
+        transition: background 0.12s;
+    }
+    .tb-btn { width: 32px; }
+    .tb-btn:hover, .tb-pill:hover, .tb-title:hover { background: rgba(0, 0, 0, 0.05); }
+    .dark .tb-btn:hover, .dark .tb-pill:hover, .dark .tb-title:hover { background: rgba(255, 255, 255, 0.08); }
+    .tb-pill { gap: 4px; padding: 0 12px 0 8px; background: rgba(0, 0, 0, 0.05); }
+    .dark .tb-pill { background: rgba(255, 255, 255, 0.08); }
+    .tb-pill:hover { background: rgba(0, 0, 0, 0.09); }
+    .dark .tb-pill:hover { background: rgba(255, 255, 255, 0.14); }
+    .tb-sep { width: 1px; height: 16px; margin: 0 4px; background: rgba(0, 0, 0, 0.1); }
+    .dark .tb-sep { background: rgba(255, 255, 255, 0.1); }
+    .tb-title { gap: 2px; padding: 0 6px 0 10px; cursor: pointer; }
+    .tb-title input {
+        font: 600 12px/1 ui-sans-serif, system-ui, -apple-system, sans-serif;
+        background: transparent; border: 0; outline: 0; color: inherit;
+        field-sizing: content; min-width: 4ch; max-width: 22ch;
+        text-overflow: ellipsis; cursor: pointer;
+    }
+    .tb-title input:not([readonly]) { cursor: text; }
+    .tb-title .material-symbols-outlined { color: #a1a1aa; }
+    .tb-value { font-variant-numeric: tabular-nums; color: #71717a; }
+    .tb-scale { display: inline-flex; align-items: center; gap: 8px; padding: 0 8px; height: 32px; color: #71717a; }
+    .tb-scale .tb-value { width: 3ch; text-align: right; }
+    .dark .tb-value, .dark .tb-scale { color: #a1a1aa; }
+    .tb-btn.is-on { background: rgba(59, 130, 246, 0.12); color: #2563eb; }
+    .dark .tb-btn.is-on { background: rgba(96, 165, 250, 0.16); color: #93c5fd; }
+    .tb-dot { position: absolute; top: 7px; right: 7px; width: 6px; height: 6px; border-radius: 50%; background: #ef4444; opacity: 0; transition: opacity 0.15s; }
+    .zoom-pct { min-width: 40px; height: 32px; text-align: center; border-radius: 9px; }
+    .zoom-pct:hover { color: inherit; }
+    .zoombar { gap: 0; }
+
+    /* Scale slider: a single soft track, no strokes */
+    #global-scale-slider {
+        -webkit-appearance: none; appearance: none;
+        width: 88px; height: 4px; border-radius: 999px;
+        background: rgba(0, 0, 0, 0.1);
+        outline: none; cursor: pointer;
+    }
+    .dark #global-scale-slider { background: rgba(255, 255, 255, 0.14); }
+    #global-scale-slider::-webkit-slider-thumb {
+        -webkit-appearance: none; appearance: none;
+        width: 14px; height: 14px; border-radius: 50%;
+        background: #3f3f46; border: 0; box-shadow: none;
+    }
+    #global-scale-slider::-moz-range-thumb { width: 14px; height: 14px; border-radius: 50%; background: #3f3f46; border: 0; }
+    .dark #global-scale-slider::-webkit-slider-thumb { background: #e4e4e7; }
+    .dark #global-scale-slider::-moz-range-thumb { background: #e4e4e7; }
+
     /* Marquee selection */
     #marquee {
         position: absolute;
@@ -119,6 +200,9 @@ a);requestAnimationFrame(function(){g(document.body)})})}var l=["material-icons"
      * the elements that use it recalculate when it changes.
      */
     @property --px { syntax: '<length>'; inherits: false; initial-value: 1px; }
+
+    /* Cards well outside the viewport skip rendering (their iframes keep their state) */
+    .canvas-node.culled .node-preview-wrapper { content-visibility: hidden; }
 
     /* Plane is always composited (translate3d); while zooming its raster is frozen */
     #canvas-plane.zooming { will-change: transform; }
@@ -196,46 +280,58 @@ a);requestAnimationFrame(function(){g(document.body)})})}var l=["material-icons"
      */
     .more-btn { display: none !important; }
     .chrome-collapsed .more-btn { display: flex !important; }
-    .chrome-collapsed .node-actions:not(.open) .actions-list { display: none; }
+    .chrome-collapsed .node-actions:not(.open) .actions-list,
+    .chrome-collapsed .label-tools:not(.open) .label-controls { display: none; }
+
+    /* The open menu: one centered column under the ⋯, lifted above everything nearby */
     .chrome-collapsed .node-actions.open .actions-list,
     .chrome-collapsed .label-tools.open .label-controls {
         position: absolute;
-        top: calc(100% + 4px);
+        top: calc(100% + 6px);
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
         flex-direction: column;
         align-items: center;
         gap: 4px;
-        padding: 4px;
-        border-radius: 10px;
+        width: 36px;
+        padding: 6px 0;
+        margin: 0;
+        border-radius: 18px;
         background: white;
         border: 1px solid rgba(0,0,0,0.08);
-        box-shadow: 0 4px 16px rgba(0,0,0,0.12);
-        z-index: 5;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+        opacity: 1;
     }
     .dark .chrome-collapsed .node-actions.open .actions-list,
     .dark .chrome-collapsed .label-tools.open .label-controls {
         background: #27272a;
         border-color: rgba(255,255,255,0.08);
     }
-    .chrome-collapsed .node-actions.open .actions-list { right: 0; }
-    .chrome-collapsed .label-tools.open .label-controls { left: 0; margin: 0; opacity: 1; }
-    .chrome-collapsed .label-tools.open .label-palette { flex-direction: column; border: 0; box-shadow: none; padding: 2px; background: none; }
-    .chrome-collapsed .label-tools:not(.open) .label-controls { display: none; }
+    .chrome-collapsed .label-tools.open .label-palette {
+        flex-direction: column; gap: 8px; padding: 2px 0 4px;
+        border: 0; box-shadow: none; background: none;
+    }
     .chrome-collapsed .node-actions.open .action-btn,
-    .chrome-collapsed .label-tools.open .action-btn { box-shadow: none; }
+    .chrome-collapsed .label-tools.open .action-btn { border: 0; box-shadow: none; background: transparent; }
+    .canvas-node.menu-open { z-index: 80 !important; }
 
     /* Action Buttons (screen px; their title strip is counter-scaled) */
     .action-btn {
+        width: 26px; height: 26px;
+        padding: 0;
         background: white;
         border: 1px solid rgba(0,0,0,0.08);
-        padding: 4px;
-        border-radius: 6px;
+        border-radius: 8px;
         box-shadow: 0 1px 2px rgba(0,0,0,0.06);
         display: flex;
         align-items: center;
         justify-content: center;
+        flex: none;
         transition: background 0.15s, color 0.15s;
         color: #52525b;
     }
+    .action-btn.more-btn { border-radius: 50%; }
     .dark .action-btn {
         background: #27272a;
         border-color: rgba(255,255,255,0.08);
@@ -246,7 +342,7 @@ a);requestAnimationFrame(function(){g(document.body)})})}var l=["material-icons"
     .action-btn.delete:hover { background: #fef2f2; color: #dc2626; }
     .dark .action-btn.delete:hover { background: #450a0a; color: #f87171; }
 
-    .action-btn .material-symbols-outlined { font-size: 16px; }
+    .action-btn .material-symbols-outlined { font-size: 16px; line-height: 1; }
 
     /* Preview Wrapper */
     .node-preview-wrapper {
@@ -381,7 +477,7 @@ a);requestAnimationFrame(function(){g(document.body)})})}var l=["material-icons"
         width: 100%;
         padding: 0 0 6px 2px;
         display: flex;
-        align-items: flex-end;
+        align-items: center;
         cursor: default;
         transform-origin: bottom left;
     }
@@ -396,6 +492,7 @@ a);requestAnimationFrame(function(){g(document.body)})})}var l=["material-icons"
         flex: 0 1 auto;
         width: auto;
         min-width: 0;
+        field-sizing: content; /* hug the text so the ⋯ sits right after it (size attr is the fallback) */
         text-overflow: ellipsis;
         cursor: default;
         line-height: 1.2;
@@ -413,9 +510,8 @@ a);requestAnimationFrame(function(){g(document.body)})})}var l=["material-icons"
         position: relative;
         flex: none;
         display: flex;
-        align-items: flex-end;
-        margin-left: 8px;
-        margin-bottom: -2px;
+        align-items: center;
+        margin-left: 6px;
         opacity: 0;
         transition: opacity 0.15s;
     }
@@ -432,7 +528,7 @@ a);requestAnimationFrame(function(){g(document.body)})})}var l=["material-icons"
     }
     .dark .label-palette { background: #27272a; border-color: rgba(255,255,255,0.08); }
     .palette-dot {
-        width: 14px; height: 14px;
+        width: 14px; height: 14px; flex: none;
         border-radius: 50%;
         cursor: pointer;
         box-shadow: inset 0 0 0 1px rgba(0,0,0,0.08);
@@ -443,7 +539,7 @@ a);requestAnimationFrame(function(){g(document.body)})})}var l=["material-icons"
     .dark .palette-dot.active { box-shadow: 0 0 0 1.5px #27272a, 0 0 0 3px currentColor; }
 
     .color-swatch-wrapper {
-        position: relative;
+        position: relative; flex: none;
         width: 14px; height: 14px;
         border-radius: 50%;
         overflow: hidden;
@@ -484,73 +580,44 @@ a);requestAnimationFrame(function(){g(document.body)})})}var l=["material-icons"
 <style>*, ::before, ::after{--tw-border-spacing-x:0;--tw-border-spacing-y:0;--tw-translate-x:0;--tw-translate-y:0;--tw-rotate:0;--tw-skew-x:0;--tw-skew-y:0;--tw-scale-x:1;--tw-scale-y:1;--tw-pan-x: ;--tw-pan-y: ;--tw-pinch-zoom: ;--tw-scroll-snap-strictness:proximity;--tw-gradient-from-position: ;--tw-gradient-via-position: ;--tw-gradient-to-position: ;--tw-ordinal: ;--tw-slashed-zero: ;--tw-numeric-figure: ;--tw-numeric-spacing: ;--tw-numeric-fraction: ;--tw-ring-inset: ;--tw-ring-offset-width:0px;--tw-ring-offset-color:#fff;--tw-ring-color:rgb(59 130 246 / 0.5);--tw-ring-offset-shadow:0 0 #0000;--tw-ring-shadow:0 0 #0000;--tw-shadow:0 0 #0000;--tw-shadow-colored:0 0 #0000;--tw-blur: ;--tw-brightness: ;--tw-contrast: ;--tw-grayscale: ;--tw-hue-rotate: ;--tw-invert: ;--tw-saturate: ;--tw-sepia: ;--tw-drop-shadow: ;--tw-backdrop-blur: ;--tw-backdrop-brightness: ;--tw-backdrop-contrast: ;--tw-backdrop-grayscale: ;--tw-backdrop-hue-rotate: ;--tw-backdrop-invert: ;--tw-backdrop-opacity: ;--tw-backdrop-saturate: ;--tw-backdrop-sepia: ;--tw-contain-size: ;--tw-contain-layout: ;--tw-contain-paint: ;--tw-contain-style: }::backdrop{--tw-border-spacing-x:0;--tw-border-spacing-y:0;--tw-translate-x:0;--tw-translate-y:0;--tw-rotate:0;--tw-skew-x:0;--tw-skew-y:0;--tw-scale-x:1;--tw-scale-y:1;--tw-pan-x: ;--tw-pan-y: ;--tw-pinch-zoom: ;--tw-scroll-snap-strictness:proximity;--tw-gradient-from-position: ;--tw-gradient-via-position: ;--tw-gradient-to-position: ;--tw-ordinal: ;--tw-slashed-zero: ;--tw-numeric-figure: ;--tw-numeric-spacing: ;--tw-numeric-fraction: ;--tw-ring-inset: ;--tw-ring-offset-width:0px;--tw-ring-offset-color:#fff;--tw-ring-color:rgb(59 130 246 / 0.5);--tw-ring-offset-shadow:0 0 #0000;--tw-ring-shadow:0 0 #0000;--tw-shadow:0 0 #0000;--tw-shadow-colored:0 0 #0000;--tw-blur: ;--tw-brightness: ;--tw-contrast: ;--tw-grayscale: ;--tw-hue-rotate: ;--tw-invert: ;--tw-saturate: ;--tw-sepia: ;--tw-drop-shadow: ;--tw-backdrop-blur: ;--tw-backdrop-brightness: ;--tw-backdrop-contrast: ;--tw-backdrop-grayscale: ;--tw-backdrop-hue-rotate: ;--tw-backdrop-invert: ;--tw-backdrop-opacity: ;--tw-backdrop-saturate: ;--tw-backdrop-sepia: ;--tw-contain-size: ;--tw-contain-layout: ;--tw-contain-paint: ;--tw-contain-style: }/* ! tailwindcss v3.4.17 | MIT License | https://tailwindcss.com */*,::after,::before{box-sizing:border-box;border-width:0;border-style:solid;border-color:#e5e7eb}::after,::before{--tw-content:''}:host,html{line-height:1.5;-webkit-text-size-adjust:100%;-moz-tab-size:4;tab-size:4;font-family:ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";font-feature-settings:normal;font-variation-settings:normal;-webkit-tap-highlight-color:transparent}body{margin:0;line-height:inherit}hr{height:0;color:inherit;border-top-width:1px}abbr:where([title]){-webkit-text-decoration:underline dotted;text-decoration:underline dotted}h1,h2,h3,h4,h5,h6{font-size:inherit;font-weight:inherit}a{color:inherit;text-decoration:inherit}b,strong{font-weight:bolder}code,kbd,pre,samp{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;font-feature-settings:normal;font-variation-settings:normal;font-size:1em}small{font-size:80%}sub,sup{font-size:75%;line-height:0;position:relative;vertical-align:baseline}sub{bottom:-.25em}sup{top:-.5em}table{text-indent:0;border-color:inherit;border-collapse:collapse}button,input,optgroup,select,textarea{font-family:inherit;font-feature-settings:inherit;font-variation-settings:inherit;font-size:100%;font-weight:inherit;line-height:inherit;letter-spacing:inherit;color:inherit;margin:0;padding:0}button,select{text-transform:none}button,input:where([type=button]),input:where([type=reset]),input:where([type=submit]){-webkit-appearance:button;background-color:transparent;background-image:none}:-moz-focusring{outline:auto}:-moz-ui-invalid{box-shadow:none}progress{vertical-align:baseline}::-webkit-inner-spin-button,::-webkit-outer-spin-button{height:auto}[type=search]{-webkit-appearance:textfield;outline-offset:-2px}::-webkit-search-decoration{-webkit-appearance:none}::-webkit-file-upload-button{-webkit-appearance:button;font:inherit}summary{display:list-item}blockquote,dd,dl,figure,h1,h2,h3,h4,h5,h6,hr,p,pre{margin:0}fieldset{margin:0;padding:0}legend{padding:0}menu,ol,ul{list-style:none;margin:0;padding:0}dialog{padding:0}textarea{resize:vertical}input::placeholder,textarea::placeholder{opacity:1;color:#9ca3af}[role=button],button{cursor:pointer}:disabled{cursor:default}audio,canvas,embed,iframe,img,object,svg,video{display:block;vertical-align:middle}img,video{max-width:100%;height:auto}[hidden]:where(:not([hidden=until-found])){display:none}.pointer-events-none{pointer-events:none}.fixed{position:fixed}.absolute{position:absolute}.relative{position:relative}.inset-0{inset:0px}.bottom-32{bottom:8rem}.bottom-8{bottom:2rem}.left-0{left:0px}.left-1\/2{left:50%}.right-8{right:2rem}.top-0{top:0px}.top-6{top:1.5rem}.z-50{z-index:50}.z-\[100\]{z-index:100}.z-\[200\]{z-index:200}.z-\[60\]{z-index:60}.mx-1{margin-left:0.25rem;margin-right:0.25rem}.mb-2{margin-bottom:0.5rem}.mb-6{margin-bottom:1.5rem}.flex{display:flex}.hidden{display:none}.h-8{height:2rem}.h-full{height:100%}.h-screen{height:100vh}.w-12{width:3rem}.w-48{width:12rem}.w-full{width:100%}.w-px{width:1px}.w-screen{width:100vw}.max-w-sm{max-width:24rem}.flex-1{flex:1 1 0%}.origin-top-left{transform-origin:top left}.-translate-x-1\/2{--tw-translate-x:-50%;transform:translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y))}.translate-y-4{--tw-translate-y:1rem;transform:translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y))}.scale-100{--tw-scale-x:1;--tw-scale-y:1;transform:translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y))}.transform{transform:translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y))}.flex-col{flex-direction:column}.items-center{align-items:center}.justify-end{justify-content:flex-end}.justify-center{justify-content:center}.justify-between{justify-content:space-between}.gap-2{gap:0.5rem}.gap-3{gap:0.75rem}.gap-4{gap:1rem}.overflow-hidden{overflow:hidden}.whitespace-nowrap{white-space:nowrap}.rounded-2xl{border-radius:1rem}.rounded-3xl{border-radius:1.5rem}.rounded-full{border-radius:9999px}.rounded-lg{border-radius:0.5rem}.rounded-xl{border-radius:0.75rem}.border{border-width:1px}.border-0{border-width:0px}.border-b{border-bottom-width:1px}.border-slate-200{--tw-border-opacity:1;border-color:rgb(226 232 240 / var(--tw-border-opacity, 1))}.bg-black\/50{background-color:rgb(0 0 0 / 0.5)}.bg-black\/80{background-color:rgb(0 0 0 / 0.8)}.bg-canvas-light{--tw-bg-opacity:1;background-color:rgb(248 250 252 / var(--tw-bg-opacity, 1))}.bg-red-500{--tw-bg-opacity:1;background-color:rgb(239 68 68 / var(--tw-bg-opacity, 1))}.bg-slate-100{--tw-bg-opacity:1;background-color:rgb(241 245 249 / var(--tw-bg-opacity, 1))}.bg-slate-200{--tw-bg-opacity:1;background-color:rgb(226 232 240 / var(--tw-bg-opacity, 1))}.bg-slate-800{--tw-bg-opacity:1;background-color:rgb(30 41 59 / var(--tw-bg-opacity, 1))}.bg-white{--tw-bg-opacity:1;background-color:rgb(255 255 255 / var(--tw-bg-opacity, 1))}.bg-white\/95{background-color:rgb(255 255 255 / 0.95)}.p-2{padding:0.5rem}.p-3{padding:0.75rem}.p-4{padding:1rem}.p-6{padding:1.5rem}.p-8{padding:2rem}.px-4{padding-left:1rem;padding-right:1rem}.px-5{padding-left:1.25rem;padding-right:1.25rem}.px-6{padding-left:1.5rem;padding-right:1.5rem}.px-8{padding-left:2rem;padding-right:2rem}.py-2{padding-top:0.5rem;padding-bottom:0.5rem}.py-3{padding-top:0.75rem;padding-bottom:0.75rem}.py-4{padding-top:1rem;padding-bottom:1rem}.py-6{padding-top:1.5rem;padding-bottom:1.5rem}.text-right{text-align:right}.font-mono{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace}.text-2xl{font-size:1.5rem;line-height:2rem}.text-\[24px\]{font-size:24px}.text-\[28px\]{font-size:28px}.text-base{font-size:1rem;line-height:1.5rem}.text-lg{font-size:1.125rem;line-height:1.75rem}.text-sm{font-size:0.875rem;line-height:1.25rem}.text-xl{font-size:1.25rem;line-height:1.75rem}.font-bold{font-weight:700}.font-medium{font-weight:500}.uppercase{text-transform:uppercase}.tracking-wider{letter-spacing:0.05em}.text-slate-400{--tw-text-opacity:1;color:rgb(148 163 184 / var(--tw-text-opacity, 1))}.text-slate-500{--tw-text-opacity:1;color:rgb(100 116 139 / var(--tw-text-opacity, 1))}.text-slate-600{--tw-text-opacity:1;color:rgb(71 85 105 / var(--tw-text-opacity, 1))}.text-slate-700{--tw-text-opacity:1;color:rgb(51 65 85 / var(--tw-text-opacity, 1))}.text-slate-800{--tw-text-opacity:1;color:rgb(30 41 59 / var(--tw-text-opacity, 1))}.text-white{--tw-text-opacity:1;color:rgb(255 255 255 / var(--tw-text-opacity, 1))}.opacity-0{opacity:0}.shadow-2xl{--tw-shadow:0 25px 50px -12px rgb(0 0 0 / 0.25);--tw-shadow-colored:0 25px 50px -12px var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow)}.backdrop-blur-md{--tw-backdrop-blur:blur(12px);-webkit-backdrop-filter:var(--tw-backdrop-blur) var(--tw-backdrop-brightness) var(--tw-backdrop-contrast) var(--tw-backdrop-grayscale) var(--tw-backdrop-hue-rotate) var(--tw-backdrop-invert) var(--tw-backdrop-opacity) var(--tw-backdrop-saturate) var(--tw-backdrop-sepia);backdrop-filter:var(--tw-backdrop-blur) var(--tw-backdrop-brightness) var(--tw-backdrop-contrast) var(--tw-backdrop-grayscale) var(--tw-backdrop-hue-rotate) var(--tw-backdrop-invert) var(--tw-backdrop-opacity) var(--tw-backdrop-saturate) var(--tw-backdrop-sepia)}.backdrop-blur-sm{--tw-backdrop-blur:blur(4px);-webkit-backdrop-filter:var(--tw-backdrop-blur) var(--tw-backdrop-brightness) var(--tw-backdrop-contrast) var(--tw-backdrop-grayscale) var(--tw-backdrop-hue-rotate) var(--tw-backdrop-invert) var(--tw-backdrop-opacity) var(--tw-backdrop-saturate) var(--tw-backdrop-sepia);backdrop-filter:var(--tw-backdrop-blur) var(--tw-backdrop-brightness) var(--tw-backdrop-contrast) var(--tw-backdrop-grayscale) var(--tw-backdrop-hue-rotate) var(--tw-backdrop-invert) var(--tw-backdrop-opacity) var(--tw-backdrop-saturate) var(--tw-backdrop-sepia)}.transition-all{transition-property:all;transition-timing-function:cubic-bezier(0.4, 0, 0.2, 1);transition-duration:150ms}.transition-colors{transition-property:color, background-color, border-color, fill, stroke, -webkit-text-decoration-color;transition-property:color, background-color, border-color, text-decoration-color, fill, stroke;transition-property:color, background-color, border-color, text-decoration-color, fill, stroke, -webkit-text-decoration-color;transition-timing-function:cubic-bezier(0.4, 0, 0.2, 1);transition-duration:150ms}.duration-300{transition-duration:300ms}.hover\:bg-red-600:hover{--tw-bg-opacity:1;background-color:rgb(220 38 38 / var(--tw-bg-opacity, 1))}.hover\:bg-slate-100:hover{--tw-bg-opacity:1;background-color:rgb(241 245 249 / var(--tw-bg-opacity, 1))}.hover\:bg-slate-200:hover{--tw-bg-opacity:1;background-color:rgb(226 232 240 / var(--tw-bg-opacity, 1))}.dark\:border-zinc-700:is(.dark *){--tw-border-opacity:1;border-color:rgb(63 63 70 / var(--tw-border-opacity, 1))}.dark\:border-zinc-800:is(.dark *){--tw-border-opacity:1;border-color:rgb(39 39 42 / var(--tw-border-opacity, 1))}.dark\:bg-black:is(.dark *){--tw-bg-opacity:1;background-color:rgb(0 0 0 / var(--tw-bg-opacity, 1))}.dark\:bg-canvas-dark:is(.dark *){--tw-bg-opacity:1;background-color:rgb(9 9 11 / var(--tw-bg-opacity, 1))}.dark\:bg-zinc-800:is(.dark *){--tw-bg-opacity:1;background-color:rgb(39 39 42 / var(--tw-bg-opacity, 1))}.dark\:bg-zinc-900:is(.dark *){--tw-bg-opacity:1;background-color:rgb(24 24 27 / var(--tw-bg-opacity, 1))}.dark\:bg-zinc-900\/95:is(.dark *){background-color:rgb(24 24 27 / 0.95)}.dark\:text-slate-100:is(.dark *){--tw-text-opacity:1;color:rgb(241 245 249 / var(--tw-text-opacity, 1))}.dark\:text-slate-200:is(.dark *){--tw-text-opacity:1;color:rgb(226 232 240 / var(--tw-text-opacity, 1))}.dark\:text-slate-300:is(.dark *){--tw-text-opacity:1;color:rgb(203 213 225 / var(--tw-text-opacity, 1))}.dark\:text-slate-400:is(.dark *){--tw-text-opacity:1;color:rgb(148 163 184 / var(--tw-text-opacity, 1))}.dark\:hover\:bg-zinc-700:hover:is(.dark *){--tw-bg-opacity:1;background-color:rgb(63 63 70 / var(--tw-bg-opacity, 1))}.dark\:hover\:bg-zinc-800:hover:is(.dark *){--tw-bg-opacity:1;background-color:rgb(39 39 42 / var(--tw-bg-opacity, 1))}</style></head>
 <body class="h-screen w-screen overflow-hidden bg-canvas-light dark:bg-canvas-dark text-slate-800 dark:text-slate-200 transition-colors duration-300 details-on-hover">
 <!-- Main Control Bar -->
-<div class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] flex items-center gap-2 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md p-1.5 rounded-2xl shadow-2xl border border-slate-200 dark:border-zinc-800 scale-90 origin-bottom">
-<!-- Logo & Menu -->
-<div class="relative pl-3 pr-1 group">
-    <div class="flex items-center gap-2 cursor-pointer" id="canvas-menu-trigger">
-        <div class="flex items-center gap-0.5">
-            <input id="canvas-title" class="font-bold text-sm bg-transparent border-none outline-none w-20 truncate cursor-text text-slate-700 dark:text-slate-200" value="Canvases" readonly spellcheck="false">
-            <span class="material-symbols-outlined text-slate-400 text-[20px] opacity-0 transition-opacity" id="canvas-chevron">expand_less</span>
+<div class="toolbar" id="toolbar">
+    <!-- Canvas name & menu -->
+    <div class="relative">
+        <button class="tb-title" id="canvas-menu-trigger" title="Canvases">
+            <input id="canvas-title" value="Canvases" readonly spellcheck="false">
+            <span class="material-symbols-outlined" id="canvas-chevron">expand_less</span>
+        </button>
+        <div class="absolute bottom-full left-0 mb-3 w-56 bg-white dark:bg-zinc-900 rounded-xl shadow-2xl border border-slate-200 dark:border-zinc-800 hidden flex-col overflow-hidden py-1 z-[150]" id="canvas-dropdown">
+            <!-- Items Injected Here -->
         </div>
     </div>
-    <!-- Dropdown -->
-    <div class="absolute bottom-full left-0 mb-4 w-56 bg-white dark:bg-zinc-900 rounded-xl shadow-2xl border border-slate-200 dark:border-zinc-800 hidden flex-col overflow-hidden py-1 z-[150]" id="canvas-dropdown">
-        <!-- Items Injected Here -->
-    </div>
-</div>
-
-<div class="h-6 w-px bg-slate-200 dark:bg-zinc-800 mx-0.5"></div>
-<button class="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors" id="btn-theme" title="Toggle Theme"><span class="material-symbols-outlined text-[20px]">dark_mode</span></button>
-<div class="h-6 w-px bg-slate-200 dark:bg-zinc-800 mx-0.5"></div>
-<!-- View Toggle -->
-<button class="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors flex items-center gap-2" id="btn-view-toggle">
-<span class="material-symbols-outlined text-slate-500 text-[20px]" id="icon-view-toggle">visibility_off</span>
-<span class="text-xs font-bold" id="text-view-toggle">Hover</span>
-</button>
-<div class="h-6 w-px bg-slate-200 dark:bg-zinc-800 mx-0.5"></div>
-<!-- Dots Toggle -->
-<button class="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors" id="btn-dots-toggle" title="Toggle Dots">
-<span class="material-symbols-outlined text-slate-500 text-[20px]" id="icon-dots-toggle">grid_on</span>
-</button>
-<div class="h-6 w-px bg-slate-200 dark:bg-zinc-800 mx-0.5"></div>
-<!-- Label Button -->
-<button class="px-3 py-2 rounded-lg bg-slate-100 dark:bg-zinc-800 hover:bg-slate-200 dark:hover:bg-zinc-700 transition-colors flex items-center gap-2 text-xs font-bold" id="btn-add-label">
-<span class="material-symbols-outlined text-[20px]">label</span>
-<span>Label</span>
-</button>
-<div class="h-6 w-px bg-slate-200 dark:bg-zinc-800 mx-0.5"></div>
-<!-- Scale -->
-<div class="flex items-center gap-2 px-2">
-<span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Scale</span>
-<input class="w-24 accent-slate-600" id="global-scale-slider" max="2.0" min="0.2" step="0.1" type="range" value="1.0">
-<span class="font-mono text-xs font-bold w-8 text-right" id="global-scale-val">1.0x</span>
-</div>
-<div class="h-6 w-px bg-slate-200 dark:bg-zinc-800 mx-0.5"></div>
-
-<!-- Actions -->
-<button class="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors relative" id="btn-save-canvas" title="Save Canvas">
-    <span class="material-symbols-outlined text-[20px]">save</span>
-    <span class="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full opacity-0 transition-opacity" id="unsaved-dot"></span>
-</button>
-
-<div class="h-6 w-px bg-slate-200 dark:bg-zinc-800 mx-0.5"></div>
-<button class="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors" id="btn-copy-all" title="Copy All JSON">
-<span class="material-symbols-outlined text-[20px]">data_object</span>
-</button>
-<button class="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors" id="btn-paste-all" title="Paste JSON">
-<span class="material-symbols-outlined text-[20px]">file_download</span>
-</button>
-<div class="h-6 w-px bg-slate-200 dark:bg-zinc-800 mx-0.5"></div>
-<button class="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors" id="btn-undo" title="Undo (Ctrl+Z)">
-<span class="material-symbols-outlined text-[20px]">undo</span>
-</button>
+    <span class="tb-sep"></span>
+    <button class="tb-btn" id="btn-theme" title="Dark mode"><span class="material-symbols-outlined">bedtime</span></button>
+    <button class="tb-btn" id="btn-view-toggle" title="Show notes"><span class="material-symbols-outlined" id="icon-view-toggle">sticky_note_2</span><span class="sr-only" id="text-view-toggle">Notes</span></button>
+    <button class="tb-btn" id="btn-dots-toggle" title="Toggle grid"><span class="material-symbols-outlined" id="icon-dots-toggle">grid_on</span></button>
+    <span class="tb-sep"></span>
+    <button class="tb-pill" id="btn-add-label" title="Add a label"><span class="material-symbols-outlined">add</span>Label</button>
+    <span class="tb-sep"></span>
+    <label class="tb-scale" title="Content scale">
+        <span>Scale</span>
+        <input id="global-scale-slider" max="2.0" min="0.2" step="0.1" type="range" value="1.0">
+        <span class="tb-value" id="global-scale-val">1.0x</span>
+    </label>
+    <span class="tb-sep"></span>
+    <button class="tb-btn relative" id="btn-save-canvas" title="Save canvas">
+        <span class="material-symbols-outlined">save</span>
+        <span class="tb-dot" id="unsaved-dot"></span>
+    </button>
+    <button class="tb-btn" id="btn-copy-all" title="Copy canvas JSON"><span class="material-symbols-outlined">data_object</span></button>
+    <button class="tb-btn" id="btn-paste-all" title="Paste canvas JSON"><span class="material-symbols-outlined">file_download</span></button>
+    <button class="tb-btn" id="btn-undo" title="Undo (Cmd+Z)"><span class="material-symbols-outlined">undo</span></button>
 </div>
 <!-- Zoom Controls -->
-<div class="fixed bottom-6 right-6 z-50 flex items-center gap-2">
-<button class="w-8 h-8 rounded-full hover:bg-slate-200/50 dark:hover:bg-zinc-800/50 transition-colors flex items-center justify-center text-slate-500 dark:text-slate-400" id="btn-zoom-out"><span class="material-symbols-outlined text-[20px]">remove</span></button>
-<button class="text-xs font-mono font-bold text-slate-400 dark:text-slate-500 w-10 text-center select-none" id="btn-zoom-reset">60%</button>
-<button class="w-8 h-8 rounded-full hover:bg-slate-200/50 dark:hover:bg-zinc-800/50 transition-colors flex items-center justify-center text-slate-500 dark:text-slate-400" id="btn-zoom-in"><span class="material-symbols-outlined text-[20px]">add</span></button>
-<button class="w-8 h-8 rounded-full hover:bg-slate-200/50 dark:hover:bg-zinc-800/50 transition-colors flex items-center justify-center text-slate-500 dark:text-slate-400" id="btn-zoom-fit" title="Zoom to fit (Shift+1)"><span class="material-symbols-outlined text-[20px]">fit_screen</span></button>
+<div class="zoombar">
+    <button class="tb-btn" id="btn-zoom-out" title="Zoom out (Cmd+-)"><span class="material-symbols-outlined">remove</span></button>
+    <button class="tb-value zoom-pct" id="btn-zoom-reset" title="Zoom to 100% (Cmd+0)">60%</button>
+    <button class="tb-btn" id="btn-zoom-in" title="Zoom in (Cmd+=)"><span class="material-symbols-outlined">add</span></button>
+    <button class="tb-btn" id="btn-zoom-fit" title="Zoom to fit (Shift+1)"><span class="material-symbols-outlined">fit_screen</span></button>
 </div>
 <!-- Toast -->
 <div class="fixed bottom-24 left-1/2 -translate-x-1/2 z-[60] bg-slate-800 text-white px-5 py-3 rounded-full shadow-2xl text-sm font-medium whitespace-nowrap opacity-0 pointer-events-none transition-all duration-300 transform translate-y-4" id="toast">Notification</div>
@@ -848,6 +915,11 @@ a);requestAnimationFrame(function(){g(document.body)})})}var l=["material-icons"
             this.els.unsavedDot.style.opacity = isDirty ? '1' : '0';
         },
 
+        fitCanvasTitle() {
+            const t = this.els.canvasTitle;
+            t.size = Math.min(Math.max(t.value.length, 4), 22);
+        },
+
         updateCanvasUI() {
             // 1. Title
             if (this.state.activeCanvasId) {
@@ -867,6 +939,8 @@ a);requestAnimationFrame(function(){g(document.body)})})}var l=["material-icons"
                 this.els.canvasTitle.classList.remove('pointer-events-auto');
                 this.els.canvasTitle.classList.add('pointer-events-none');
             }
+
+            this.fitCanvasTitle();
 
             // 2. Chevron - Always visible now
             this.els.canvasChevron.style.opacity = '1';
@@ -1516,11 +1590,15 @@ a);requestAnimationFrame(function(){g(document.body)})})}var l=["material-icons"
         bindMoreMenu(el, container) {
             const more = container.querySelector('.more-btn');
             more.onmousedown = e => e.stopPropagation();
-            more.onclick = e => { e.stopPropagation(); container.classList.toggle('open'); };
+            const setOpen = (open) => {
+                container.classList.toggle('open', open);
+                el.classList.toggle('menu-open', open);
+            };
+            more.onclick = e => { e.stopPropagation(); setOpen(!container.classList.contains('open')); };
             container.addEventListener('click', e => {
-                if (e.target.closest('.action-btn') && !e.target.closest('.more-btn')) container.classList.remove('open');
+                if (e.target.closest('.action-btn') && !e.target.closest('.more-btn')) setOpen(false);
             });
-            el.addEventListener('mouseleave', () => container.classList.remove('open'));
+            el.addEventListener('mouseleave', () => setOpen(false));
         },
 
         applyCamera() {
@@ -1548,6 +1626,26 @@ a);requestAnimationFrame(function(){g(document.body)})})}var l=["material-icons"
             }
 
             this.drawGrid();
+            this.cullOffscreen();
+        },
+
+        // Pure math against the camera (no layout reads); classes only change when a card
+        // crosses the boundary, which sits half a screen beyond the viewport so cards are
+        // painted before they scroll into view.
+        cullOffscreen() {
+            const z = this.state.zoom, { x: px, y: py } = this.state.pan;
+            const mx = this._vw * 0.5, my = this._vh * 0.5;
+            const left = (-mx - px) / z, top = (-my - py) / z;
+            const right = (this._vw + mx - px) / z, bottom = (this._vh + my - py) / z;
+            for (const n of this.state.nodes) {
+                if (n.type !== 'snippet') continue;
+                const el = document.getElementById(`node-${n.id}`);
+                if (!el) continue;
+                const off = n.x > right || n.x + n.width < left || n.y > bottom || n.y + n.height < top;
+                if (off === el._culled) continue; // flag lives on the element, never in saved node data
+                el._culled = off;
+                el.classList.toggle('culled', off);
+            }
         },
 
         // FigJam-style dot grid: constant-size dots snapped to device pixels (so every dot renders
@@ -2088,6 +2186,7 @@ a);requestAnimationFrame(function(){g(document.body)})})}var l=["material-icons"
             this.updateNodeGlobalScale(node.id);
             this.applyChromeScale(el);
             this.fitChrome(el, node);
+            this.requestRender(); // next frame decides whether this card starts culled
         },
 
         renderLabel(node) {
@@ -2347,29 +2446,16 @@ a);requestAnimationFrame(function(){g(document.body)})})}var l=["material-icons"
             document.getElementById('btn-add-label').onclick = () => this.createLabelNode();
             document.getElementById('btn-undo').onclick = () => this.undo();
             
+            // Notes: always shown vs. on hover; the button reads as pressed while notes are always on
             const viewBtn = document.getElementById('btn-view-toggle');
             viewBtn.onclick = () => {
-                const icon = document.getElementById('icon-view-toggle');
-                const text = document.getElementById('text-view-toggle');
-                
-                if (this.state.viewMode === 'hover') {
-                    this.state.viewMode = 'always';
-                    document.body.classList.remove('details-on-hover');
-                    document.body.classList.add('show-details-always');
-                    icon.innerText = 'visibility';
-                    text.innerText = 'Notes';
-                } else {
-                    this.state.viewMode = 'hover';
-                    document.body.classList.remove('show-details-always');
-                    document.body.classList.add('details-on-hover');
-                    icon.innerText = 'visibility_off';
-                    text.innerText = 'Notes';
-                }
+                const always = this.state.viewMode === 'hover';
+                this.state.viewMode = always ? 'always' : 'hover';
+                document.body.classList.toggle('show-details-always', always);
+                document.body.classList.toggle('details-on-hover', !always);
+                viewBtn.classList.toggle('is-on', always);
+                viewBtn.title = always ? 'Hide notes' : 'Show notes';
             };
-            
-            // Set initial state
-            document.getElementById('text-view-toggle').innerText = 'Notes';
-            document.getElementById('icon-view-toggle').innerText = 'visibility_off';
 
             // Dots Toggle
             document.getElementById('btn-dots-toggle').onclick = () => {
@@ -2396,6 +2482,7 @@ a);requestAnimationFrame(function(){g(document.body)})})}var l=["material-icons"
             };
             
             // Title Rename (Blur)
+            this.els.canvasTitle.addEventListener('input', () => this.fitCanvasTitle());
             this.els.canvasTitle.onchange = (e) => {
                 this.renameCanvas(e.target.value);
             };
@@ -2443,7 +2530,9 @@ a);requestAnimationFrame(function(){g(document.body)})})}var l=["material-icons"
             const root = document.documentElement;
             if(this.state.theme === 'dark') root.classList.add('dark');
             else root.classList.remove('dark');
-            document.getElementById('btn-theme').innerHTML = `<span class="material-symbols-outlined text-[24px]">${this.state.theme === 'dark' ? 'light_mode' : 'dark_mode'}</span>`;
+            const themeBtn = document.getElementById('btn-theme');
+            themeBtn.innerHTML = `<span class="material-symbols-outlined">${this.state.theme === 'dark' ? 'light_mode' : 'bedtime'}</span>`;
+            themeBtn.title = this.state.theme === 'dark' ? 'Light mode' : 'Dark mode';
             if(this.editor && window.monaco) {
                 monaco.editor.setTheme(this.state.theme === 'dark' ? 'vs-dark' : 'vs');
             }
