@@ -1,6 +1,6 @@
 # `canvas`
 
-An infinite canvas for live websites and HTML. Paste things in, group them under labels, and test them side by side, all saved in your browser.
+Infinite single view for pasting live websites and any HTML. Paste things in, group them under labels, and test them side by side, all saved in your browser.
 
 
 <div align="center">
