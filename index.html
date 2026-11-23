@@ -576,9 +576,6 @@ a);requestAnimationFrame(function(){g(document.body)})})}var l=["material-icons"
 
     .iframe-scaler { transform-origin: 0 0; width: 100%; height: 100%; }
 
-    /* The full view grows out of its card: each picture fills the box at its own shape, never stretched to it */
-    ::view-transition-old(modal-expand), ::view-transition-new(modal-expand) { width: 100%; height: 100%; object-fit: cover; object-position: top left; }
-
     /* Narrow windows: the full view stacks, the site on top at the window's width, its code a short strip under it */
     @media (max-width: 900px) {
         #modal-overlay { padding: 12px; }
@@ -2616,48 +2613,36 @@ a);requestAnimationFrame(function(){g(document.body)})})}var l=["material-icons"
                 };
             };
 
-            if (document.startViewTransition) {
-                previewEl.style.viewTransitionName = 'modal-expand';
-                
-                const transition = document.startViewTransition(() => {
-                    previewEl.style.viewTransitionName = ''; 
-                    document.getElementById('modal-content').style.viewTransitionName = 'modal-expand';
-                    updateDom();
-                });
+            updateDom();
+            this.growModal(previewEl, true);
+        },
 
-                transition.finished.then(() => {
-                    document.getElementById('modal-content').style.viewTransitionName = '';
-                    if(this.editor) this.editor.layout();
-                });
-            } else {
-                updateDom();
-            }
+        // The full view grows out of its card and back into it: the site's corner on the card's, one even scale, cut to
+        // the card's shape, so nothing is ever stretched. The site stays live throughout.
+        growModal(previewEl, open) {
+            this._grow?.cancel();
+            const content = document.getElementById('modal-content'), site = document.getElementById('modal-site');
+            if (!previewEl || matchMedia('(prefers-reduced-motion: reduce)').matches) return Promise.resolve();
+            const c = previewEl.getBoundingClientRect(), r = content.getBoundingClientRect(), w = site.offsetWidth;
+            const s = c.width / w, cut = Math.max(0, r.height - c.height / s);
+            const card = { transform: `translate(${c.left - r.left}px, ${c.top - r.top}px) scale(${s})`, clipPath: `inset(0 ${r.width - w}px ${cut}px 0 round ${Math.min(10 / s, w / 20)}px)` };
+            const full = { transform: 'none', clipPath: 'inset(0 0 0 0 round 10px)' };
+            const dir = open ? 'normal' : 'reverse', opts = { duration: open ? 380 : 340, easing: open ? 'cubic-bezier(.3, .5, .15, 1)' : 'ease-in-out', direction: dir, fill: 'both' };
+            content.style.transformOrigin = '0 0';
+            const a = content.animate([{ ...card, opacity: 0 }, { opacity: 1, offset: .2 }, { ...full, opacity: 1 }], opts);
+            const b = this.els.modal.animate([{ backgroundColor: 'rgb(0 0 0 / 0)', backdropFilter: 'blur(0px)' }, {}], opts);
+            this._grow = { cancel: () => { a.cancel(); b.cancel(); } };
+            return a.finished.then(() => true, () => false).then(done => { if (done && open) this._grow.cancel(); return done; });
         },
 
         closeModal() {
-            const modalContent = document.getElementById('modal-content');
             const previewEl = this.state.activeModalNodeId ? document.getElementById(`node-${this.state.activeModalNodeId}`)?.querySelector('.node-preview-wrapper') : null;
-
-            const updateDom = () => {
+            this.growModal(previewEl, false).then(done => {
+                if (done === false) return;   // opened again on the way out
                 this.els.modal.classList.add('hidden');
                 this.els.modalIframe.srcdoc = '';
-            };
-
-            if (document.startViewTransition && previewEl) {
-                modalContent.style.viewTransitionName = 'modal-expand';
-                
-                const transition = document.startViewTransition(() => {
-                    modalContent.style.viewTransitionName = '';
-                    previewEl.style.viewTransitionName = 'modal-expand';
-                    updateDom();
-                });
-
-                transition.finished.then(() => {
-                    previewEl.style.viewTransitionName = '';
-                });
-            } else {
-                updateDom();
-            }
+                this._grow?.cancel();
+            });
             this.state.activeModalNodeId = null;
         },
 
